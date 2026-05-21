@@ -124,6 +124,21 @@ def ensure_user_date_of_birth_column():
 
 ensure_user_date_of_birth_column()
 
+
+def ensure_appointment_payment_status_column():
+    inspector = inspect(engine)
+    appt_columns = {column["name"] for column in inspector.get_columns("appointments")}
+    if "payment_status" in appt_columns:
+        return
+    with engine.begin() as connection:
+        if engine.dialect.name == "sqlite":
+            connection.execute(text("ALTER TABLE appointments ADD COLUMN payment_status VARCHAR DEFAULT 'Unpaid'"))
+        else:
+            connection.execute(text("ALTER TABLE appointments ADD COLUMN IF NOT EXISTS payment_status VARCHAR DEFAULT 'Unpaid'"))
+
+
+ensure_appointment_payment_status_column()
+
 app = FastAPI(title="Smart Hospital API")
 
 # ✅ CORS restricted to allowed origins only
