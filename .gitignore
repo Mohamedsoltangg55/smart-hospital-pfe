@@ -1,0 +1,19 @@
+# Node & React
+frontend/node_modules/
+frontend/dist/
+.DS_Store
+
+# Python & Backend
+backend/__pycache__/
+backend/venv/
+backend/.env
+
+# Database (Never commit patient data to a public repo!)
+backend/app/hospital.db
+
+# Vite & Docker logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.idea/
+.vscode/
