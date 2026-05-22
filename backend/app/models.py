@@ -70,6 +70,8 @@ class AuditLog(Base):
     action = Column(String)
     details = Column(String)
     timestamp = Column(DateTime)
+    severity = Column(String, default="NORMAL")  # NORMAL | SUSPICIOUS | SUSPICIOUS_UNKNOWN_PATTERN
+    anomaly_score = Column(String, nullable=True)  # reconstruction error (stringified)
 
 class NursingTask(Base):
     __tablename__ = "nursing_tasks"

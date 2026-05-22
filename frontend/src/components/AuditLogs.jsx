@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Table, Tag, Typography, Space, Button, Input, DatePicker, Row, Col, Statistic } from 'antd';
-import { 
-  SafetyCertificateOutlined, 
-  SyncOutlined, 
-  SearchOutlined, 
-  AlertOutlined, 
+import {
+  SafetyCertificateOutlined,
+  SyncOutlined,
+  SearchOutlined,
+  AlertOutlined,
   UnlockOutlined,
-  EyeOutlined
+  EyeOutlined,
+  WarningOutlined,
+  RobotOutlined
 } from '@ant-design/icons';
 import client from '../api/client';
 import dayjs from 'dayjs';
@@ -20,7 +22,7 @@ const { RangePicker } = DatePicker;
 const getActionColor = (action) => {
   if (!action) return 'default';
   const act = action.toUpperCase();
-  
+
   if (act.includes('SECURITY_VIOLATION') || act.includes('DELETED')) return 'red';
   if (act.includes('PAYMENT_RECEIVED') || act.includes('LOGIN') || act.includes('STARTUP')) return 'success';
   if (act.includes('LAB') || act.includes('CONSULTATION') || act.includes('TRIAGE') || act.includes('ADMITTED') || act.includes('DISCHARGED')) return 'purple';
@@ -28,6 +30,34 @@ const getActionColor = (action) => {
   if (act.includes('STATUS') || act.includes('UPDATED')) return 'warning';
 
   return 'default';
+};
+
+const isSuspicious = (record) => {
+  const s = (record?.severity || '').toUpperCase();
+  return s === 'SUSPICIOUS' || s === 'SUSPICIOUS_UNKNOWN_PATTERN';
+};
+
+const renderSeverity = (severity, record) => {
+  const s = (severity || 'NORMAL').toUpperCase();
+  if (s === 'SUSPICIOUS') {
+    return (
+      <Tag color="red" icon={<WarningOutlined />} style={{ fontWeight: 'bold' }}>
+        SUSPICIOUS
+      </Tag>
+    );
+  }
+  if (s === 'SUSPICIOUS_UNKNOWN_PATTERN') {
+    return (
+      <Tag color="volcano" icon={<WarningOutlined />} style={{ fontWeight: 'bold' }}>
+        UNKNOWN PATTERN
+      </Tag>
+    );
+  }
+  return (
+    <Tag color="green" icon={<RobotOutlined />} style={{ fontWeight: 500 }}>
+      Normal
+    </Tag>
+  );
 };
 
 const AuditLog = () => {
@@ -72,6 +102,7 @@ const AuditLog = () => {
   const todayLogs = logs.filter(l => dayjs(l.timestamp).isSame(dayjs(), 'day'));
   const securityAlerts = todayLogs.filter(l => (l.action || '').includes('SECURITY_VIOLATION')).length;
   const loginsToday = todayLogs.filter(l => (l.action || '').includes('USER_LOGIN')).length;
+  const aiAnomaliesToday = todayLogs.filter(l => isSuspicious(l)).length;
 
   const columns = [
     { 
@@ -101,9 +132,9 @@ const AuditLog = () => {
       ), 
       width: 250 
     },
-    { 
-      title: 'Détails de l\'événement', 
-      dataIndex: 'details', 
+    {
+      title: 'Détails de l\'événement',
+      dataIndex: 'details',
       key: 'details',
       render: (text) => {
         if (!text) return '';
@@ -117,6 +148,28 @@ const AuditLog = () => {
         }
         return text;
       }
+    },
+    {
+      title: 'IA Sécurité',
+      dataIndex: 'severity',
+      key: 'severity',
+      width: 170,
+      filters: [
+        { text: 'Normal', value: 'NORMAL' },
+        { text: 'Suspicious', value: 'SUSPICIOUS' },
+        { text: 'Unknown Pattern', value: 'SUSPICIOUS_UNKNOWN_PATTERN' },
+      ],
+      onFilter: (value, record) => (record.severity || 'NORMAL').toUpperCase() === value,
+      render: (severity, record) => (
+        <Space direction="vertical" size={0}>
+          {renderSeverity(severity, record)}
+          {record.anomaly_score && (
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              score: {Number(record.anomaly_score).toFixed(4)}
+            </Text>
+          )}
+        </Space>
+      )
     }
   ];
 
@@ -137,32 +190,42 @@ const AuditLog = () => {
       </div>
 
       <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={8}>
+        <Col span={6}>
           <Card style={{ borderRadius: 12, borderLeft: '5px solid #1890ff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-            <Statistic 
-              title={<Text strong style={{ color: '#8c8c8c' }}>Total des événements (Aujourd'hui)</Text>} 
-              value={todayLogs.length} 
-              prefix={<EyeOutlined style={{ color: '#1890ff' }} />} 
+            <Statistic
+              title={<Text strong style={{ color: '#8c8c8c' }}>Total des événements (Aujourd'hui)</Text>}
+              value={todayLogs.length}
+              prefix={<EyeOutlined style={{ color: '#1890ff' }} />}
               valueStyle={{ fontWeight: 800, color: '#141414' }}
             />
           </Card>
         </Col>
-        <Col span={8}>
+        <Col span={6}>
           <Card style={{ borderRadius: 12, borderLeft: '5px solid #ff4d4f', background: securityAlerts > 0 ? '#fff1f0' : '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-            <Statistic 
-              title={<Text strong style={{ color: '#8c8c8c' }}>Violations de Sécurité (Aujourd'hui)</Text>} 
-              value={securityAlerts} 
-              prefix={<AlertOutlined style={{ color: '#ff4d4f' }} />} 
+            <Statistic
+              title={<Text strong style={{ color: '#8c8c8c' }}>Violations de Sécurité (Aujourd'hui)</Text>}
+              value={securityAlerts}
+              prefix={<AlertOutlined style={{ color: '#ff4d4f' }} />}
               valueStyle={{ fontWeight: 800, color: '#ff4d4f' }}
             />
           </Card>
         </Col>
-        <Col span={8}>
+        <Col span={6}>
+          <Card style={{ borderRadius: 12, borderLeft: '5px solid #fa8c16', background: aiAnomaliesToday > 0 ? '#fff7e6' : '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+            <Statistic
+              title={<Text strong style={{ color: '#8c8c8c' }}>Anomalies IA (Aujourd'hui)</Text>}
+              value={aiAnomaliesToday}
+              prefix={<RobotOutlined style={{ color: '#fa8c16' }} />}
+              valueStyle={{ fontWeight: 800, color: '#fa8c16' }}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
           <Card style={{ borderRadius: 12, borderLeft: '5px solid #52c41a', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-            <Statistic 
-              title={<Text strong style={{ color: '#8c8c8c' }}>Connexions Utilisateurs (Aujourd'hui)</Text>} 
-              value={loginsToday} 
-              prefix={<UnlockOutlined style={{ color: '#52c41a' }} />} 
+            <Statistic
+              title={<Text strong style={{ color: '#8c8c8c' }}>Connexions Utilisateurs (Aujourd'hui)</Text>}
+              value={loginsToday}
+              prefix={<UnlockOutlined style={{ color: '#52c41a' }} />}
               valueStyle={{ fontWeight: 800, color: '#52c41a' }}
             />
           </Card>
@@ -205,10 +268,19 @@ const AuditLog = () => {
             showSizeChanger: true,
             showTotal: (total, range) => `${range[0]}-${range[1]} sur ${total} événements`
           }} 
-          rowClassName={(record) => (record.action || '').includes('SECURITY_VIOLATION') ? 'security-alert-row' : ''}
+          rowClassName={(record) => {
+            if (isSuspicious(record)) return 'ai-suspicious-row';
+            if ((record.action || '').includes('SECURITY_VIOLATION')) return 'security-alert-row';
+            return '';
+          }}
         />
         <style>{`
           .security-alert-row td { background-color: #fff1f0 !important; }
+          .ai-suspicious-row td {
+            background-color: #fff1f0 !important;
+            border-left: 4px solid #ff4d4f !important;
+          }
+          .ai-suspicious-row:hover td { background-color: #ffccc7 !important; }
           .ant-table-thead > tr > th { background: #fafafa; font-weight: 600; }
         `}</style>
       </Card>

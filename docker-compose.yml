@@ -26,7 +26,10 @@ services:
   backend:
     build: ./backend
     container_name: hospital_backend
-    command: sh -c "sleep 15 && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    # NOTE: --reload removed. The project lives under OneDrive; uvicorn's
+    # reload watcher recursively stat-walks the bind mount and crashes with
+    # "OSError: [Errno 14] Bad address". Restart the container after code changes.
+    command: sh -c "sleep 15 && uvicorn app.main:app --host 0.0.0.0 --port 8000"
     volumes:
       - ./backend:/app
     ports:
@@ -52,7 +55,8 @@ services:
   ai_engine:
     build: ./ai_engine
     container_name: hospital_ai_engine
-    command: uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+    # --reload removed (same OneDrive bind-mount issue as the backend).
+    command: uvicorn main:app --host 0.0.0.0 --port 8001
     volumes:
       - ./ai_engine:/app
     ports:

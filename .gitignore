@@ -4,9 +4,13 @@ frontend/dist/
 .DS_Store
 
 # Python & Backend
-backend/__pycache__/
+__pycache__/
+*.pyc
 backend/venv/
 backend/.env
+
+# Claude Code local settings
+.claude/settings.local.json
 
 # Database (Never commit patient data to a public repo!)
 *.db

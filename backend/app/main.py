@@ -139,6 +139,26 @@ def ensure_appointment_payment_status_column():
 
 ensure_appointment_payment_status_column()
 
+
+def ensure_audit_log_severity_columns():
+    """Add AI security severity fields to existing audit_logs tables."""
+    inspector = inspect(engine)
+    log_columns = {column["name"] for column in inspector.get_columns("audit_logs")}
+    if "severity" in log_columns and "anomaly_score" in log_columns:
+        return
+    with engine.begin() as connection:
+        if engine.dialect.name == "sqlite":
+            if "severity" not in log_columns:
+                connection.execute(text("ALTER TABLE audit_logs ADD COLUMN severity VARCHAR DEFAULT 'NORMAL'"))
+            if "anomaly_score" not in log_columns:
+                connection.execute(text("ALTER TABLE audit_logs ADD COLUMN anomaly_score VARCHAR"))
+        else:
+            connection.execute(text("ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS severity VARCHAR DEFAULT 'NORMAL'"))
+            connection.execute(text("ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS anomaly_score VARCHAR"))
+
+
+ensure_audit_log_severity_columns()
+
 app = FastAPI(title="Smart Hospital API")
 
 # ✅ CORS restricted to allowed origins only
@@ -323,12 +343,34 @@ def require_role(*allowed_roles):
 
 # --- 🛡️ THE AUDIT LOGGER ---
 def log_action(db: Session, user: str, action: str, details: str):
+    now = datetime.utcnow()
+
+    # 🧠 AI SECURITY HOOK: classify every audit entry before persisting.
+    # Failures inside the hook are isolated - they never break logging.
+    severity = "NORMAL"
+    score_str = None
+    try:
+        from ai_security_module.predict import check_live_log
+        verdict = check_live_log(
+            {"user": user, "action": action, "details": details, "timestamp": now},
+            db=db,
+        )
+        severity = verdict.get("severity", "NORMAL")
+        if verdict.get("score") is not None:
+            score_str = f"{verdict['score']:.6f}"
+    except Exception as e:
+        # Strict fail-safe: never let the AI layer break audit logging.
+        severity = "SUSPICIOUS_UNKNOWN_PATTERN"
+        print(f"AI security hook error: {e}")
+
     try:
         new_log = models.AuditLog(
             user=user if user else "System",
             action=action,
             details=details,
-            timestamp=datetime.utcnow()
+            timestamp=now,
+            severity=severity,
+            anomaly_score=score_str,
         )
         db.add(new_log)
         db.commit()

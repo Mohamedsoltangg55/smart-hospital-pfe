@@ -176,14 +176,14 @@ const StaffManagement = () => {
           <Divider orientation="left">Identité & Accès</Divider>
           <Row gutter={16}>
             <Col span={12}><Form.Item name="full_name" label="Nom Complet" rules={[{ required: true }]}><Input placeholder="Ex: Dr. Amina Youssef" /></Form.Item></Col>
-            <Col span={12}><Form.Item name="username" label="Nom d'utilisateur (Login)" rules={[{ required: true }]}><Input placeholder="Ex: dr.amina" /></Form.Item></Col>
+            <Col span={12}><Form.Item name="username" label="Nom d'utilisateur (Login)" rules={[{ required: true }]}><Input placeholder="Ex: dr.amina" autoComplete="off" /></Form.Item></Col>
           </Row>
 
           <Row gutter={16}>
             <Col span={12}><Form.Item name="date_of_birth" label="Date de Naissance"><DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Sélectionner une date" /></Form.Item></Col>
             <Col span={12}>
               <Form.Item name="password" label={editingUser ? "Nouveau mot de passe" : "Mot de passe"} rules={[{ required: !editingUser, message: "Requis pour un nouveau compte" }]} extra={editingUser ? "Laissez vide pour conserver l'ancien mot de passe" : ""}>
-                <Input.Password placeholder={editingUser ? "Modifier le mot de passe..." : "Créer un mot de passe"} />
+                <Input.Password autoComplete="new-password" placeholder={editingUser ? "Modifier le mot de passe..." : "Créer un mot de passe"} />
               </Form.Item>
             </Col>
           </Row>
