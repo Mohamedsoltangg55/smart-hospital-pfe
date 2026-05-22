@@ -17,12 +17,14 @@ import json
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from .. import models
+from .analysis.service import analyze_log, get_cached_analysis, is_flagged
 from .detection.roles import role_of
 from .schemas import (
     AnomalyDTO, AuditLogDTO, ErrorDTO, LogsData, LogsEnvelope,
@@ -172,3 +174,64 @@ def logs_summary(db: Session = Depends(get_db)):
         ))
     except Exception as e:
         return SummaryEnvelope(error=ErrorDTO(code="SUMMARY_QUERY_FAILED", message=str(e)))
+
+
+# ----------------------------------------------------------------------
+#  AI analysis endpoints (Phase 3) -- LLM contextual analysis.
+#  The LLM only EXPLAINS; it never recomputes score/status (see analysis/).
+# ----------------------------------------------------------------------
+
+def _error_response(status_code: int, code: str, message: str) -> JSONResponse:
+    """A { data, error } envelope with a proper HTTP status code."""
+    return JSONResponse(
+        status_code=status_code,
+        content={"data": None, "error": {"code": code, "message": message}},
+    )
+
+
+@router.post("/logs/{log_id}/analyze")
+async def analyze_log_endpoint(
+    log_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Request an LLM contextual analysis for one flagged audit log.
+
+    Body (optional): { "force_refresh": bool, "requested_by": str }.
+    Logs the algorithmic layer did NOT flag are rejected with a clear message.
+    """
+    log = db.query(models.AuditLog).filter(models.AuditLog.id == log_id).first()
+    if not log:
+        return _error_response(404, "LOG_NOT_FOUND", f"Audit log #{log_id} not found.")
+    if not is_flagged(log):
+        return _error_response(
+            400, "LOG_NOT_FLAGGED",
+            "Only SUSPICIOUS or CRITICAL logs can be analyzed; this log is NORMAL.",
+        )
+    # Tolerant body parsing: a missing or non-JSON body is treated as {}.
+    try:
+        body = await request.json()
+        if not isinstance(body, dict):
+            body = {}
+    except Exception:
+        body = {}
+    force_refresh = bool(body.get("force_refresh", False))
+    requested_by = str(body.get("requested_by") or "security-console")
+    try:
+        payload = analyze_log(db, log, requested_by=requested_by, force_refresh=force_refresh)
+        return {"data": payload, "error": None}
+    except Exception as e:
+        return _error_response(500, "ANALYSIS_FAILED", str(e))
+
+
+@router.get("/logs/{log_id}/analysis")
+def get_analysis_endpoint(log_id: int, db: Session = Depends(get_db)):
+    """Return the cached analysis for a log, if one has been generated."""
+    log = db.query(models.AuditLog).filter(models.AuditLog.id == log_id).first()
+    if not log:
+        return _error_response(404, "LOG_NOT_FOUND", f"Audit log #{log_id} not found.")
+    payload = get_cached_analysis(db, log)
+    if payload is None:
+        return _error_response(404, "NO_ANALYSIS",
+                               "No analysis has been generated for this log yet.")
+    return {"data": payload, "error": None}

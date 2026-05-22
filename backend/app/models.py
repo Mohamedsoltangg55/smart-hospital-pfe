@@ -81,6 +81,18 @@ class AuditLog(Base):
     features_used = Column(String, nullable=True)     # JSON list of fired rules
     anomaly_severity = Column(String, nullable=True)  # INFO|LOW|MEDIUM|HIGH|CRITICAL
 
+class LogAnalysis(Base):
+    """Phase 3: per-log cache of the LLM contextual analysis (section 6.2).
+    One row per audit log; re-analyze overwrites it."""
+    __tablename__ = "log_analyses"
+    id = Column(Integer, primary_key=True, index=True)
+    log_id = Column(Integer, index=True, unique=True)
+    model = Column(String)
+    generated_at = Column(DateTime)
+    status = Column(String)          # ok | fallback | mock
+    analysis_json = Column(String)   # the section 4 report, JSON-encoded
+    requested_by = Column(String)
+
 class NursingTask(Base):
     __tablename__ = "nursing_tasks"
     id = Column(Integer, primary_key=True, index=True)
