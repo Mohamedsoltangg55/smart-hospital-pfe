@@ -7,10 +7,10 @@ import {
   AlertOutlined,
   UnlockOutlined,
   EyeOutlined,
-  WarningOutlined,
   RobotOutlined
 } from '@ant-design/icons';
 import client from '../api/client';
+import StatusBadge, { normalizeStatus, isFlagged } from './security/StatusBadge';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 
@@ -30,34 +30,6 @@ const getActionColor = (action) => {
   if (act.includes('STATUS') || act.includes('UPDATED')) return 'warning';
 
   return 'default';
-};
-
-const isSuspicious = (record) => {
-  const s = (record?.severity || '').toUpperCase();
-  return s === 'SUSPICIOUS' || s === 'SUSPICIOUS_UNKNOWN_PATTERN';
-};
-
-const renderSeverity = (severity, record) => {
-  const s = (severity || 'NORMAL').toUpperCase();
-  if (s === 'SUSPICIOUS') {
-    return (
-      <Tag color="red" icon={<WarningOutlined />} style={{ fontWeight: 'bold' }}>
-        SUSPICIOUS
-      </Tag>
-    );
-  }
-  if (s === 'SUSPICIOUS_UNKNOWN_PATTERN') {
-    return (
-      <Tag color="volcano" icon={<WarningOutlined />} style={{ fontWeight: 'bold' }}>
-        UNKNOWN PATTERN
-      </Tag>
-    );
-  }
-  return (
-    <Tag color="green" icon={<RobotOutlined />} style={{ fontWeight: 500 }}>
-      Normal
-    </Tag>
-  );
 };
 
 const AuditLog = () => {
@@ -102,7 +74,7 @@ const AuditLog = () => {
   const todayLogs = logs.filter(l => dayjs(l.timestamp).isSame(dayjs(), 'day'));
   const securityAlerts = todayLogs.filter(l => (l.action || '').includes('SECURITY_VIOLATION')).length;
   const loginsToday = todayLogs.filter(l => (l.action || '').includes('USER_LOGIN')).length;
-  const aiAnomaliesToday = todayLogs.filter(l => isSuspicious(l)).length;
+  const aiAnomaliesToday = todayLogs.filter(l => isFlagged(l)).length;
 
   const columns = [
     { 
@@ -156,13 +128,13 @@ const AuditLog = () => {
       width: 170,
       filters: [
         { text: 'Normal', value: 'NORMAL' },
-        { text: 'Suspicious', value: 'SUSPICIOUS' },
-        { text: 'Unknown Pattern', value: 'SUSPICIOUS_UNKNOWN_PATTERN' },
+        { text: 'Suspect', value: 'SUSPICIOUS' },
+        { text: 'Critique', value: 'CRITICAL' },
       ],
-      onFilter: (value, record) => (record.severity || 'NORMAL').toUpperCase() === value,
+      onFilter: (value, record) => normalizeStatus(record.severity) === value,
       render: (severity, record) => (
         <Space direction="vertical" size={0}>
-          {renderSeverity(severity, record)}
+          <StatusBadge status={severity} />
           {record.anomaly_score && (
             <Text type="secondary" style={{ fontSize: 11 }}>
               score: {Number(record.anomaly_score).toFixed(4)}
@@ -269,18 +241,23 @@ const AuditLog = () => {
             showTotal: (total, range) => `${range[0]}-${range[1]} sur ${total} événements`
           }} 
           rowClassName={(record) => {
-            if (isSuspicious(record)) return 'ai-suspicious-row';
-            if ((record.action || '').includes('SECURITY_VIOLATION')) return 'security-alert-row';
+            const s = normalizeStatus(record.severity);
+            if (s === 'CRITICAL') return 'ai-critical-row';
+            if (s === 'SUSPICIOUS') return 'ai-suspicious-row';
             return '';
           }}
         />
         <style>{`
-          .security-alert-row td { background-color: #fff1f0 !important; }
           .ai-suspicious-row td {
+            background-color: #fff7e6 !important;
+            border-left: 4px solid #fa8c16 !important;
+          }
+          .ai-suspicious-row:hover td { background-color: #ffe7ba !important; }
+          .ai-critical-row td {
             background-color: #fff1f0 !important;
             border-left: 4px solid #ff4d4f !important;
           }
-          .ai-suspicious-row:hover td { background-color: #ffccc7 !important; }
+          .ai-critical-row:hover td { background-color: #ffccc7 !important; }
           .ant-table-thead > tr > th { background: #fafafa; font-weight: 600; }
         `}</style>
       </Card>

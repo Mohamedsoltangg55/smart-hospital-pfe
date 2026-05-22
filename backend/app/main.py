@@ -345,23 +345,38 @@ def require_role(*allowed_roles):
 def log_action(db: Session, user: str, action: str, details: str):
     now = datetime.utcnow()
 
-    # 🧠 AI SECURITY HOOK: classify every audit entry before persisting.
-    # Failures inside the hook are isolated - they never break logging.
-    severity = "NORMAL"
-    score_str = None
+    # 🧠 ALGORITHMIC SECURITY LAYER (non-LLM): score the event with the
+    # autoencoder, then classify it into a NORMAL / SUSPICIOUS / CRITICAL
+    # status via the detection layer. Failures here never break audit logging.
+    raw_score = None
+    detector_status = None
     try:
         from ai_security_module.predict import check_live_log
         verdict = check_live_log(
             {"user": user, "action": action, "details": details, "timestamp": now},
             db=db,
         )
-        severity = verdict.get("severity", "NORMAL")
-        if verdict.get("score") is not None:
-            score_str = f"{verdict['score']:.6f}"
+        raw_score = verdict.get("score")
+        detector_status = verdict.get("severity")
     except Exception as e:
-        # Strict fail-safe: never let the AI layer break audit logging.
-        severity = "SUSPICIOUS_UNKNOWN_PATTERN"
+        detector_status = "SUSPICIOUS_UNKNOWN_PATTERN"
         print(f"AI security hook error: {e}")
+
+    status = "NORMAL"
+    score_str = None
+    try:
+        from .security.detection.classifier import classify
+        result = classify(raw_score=raw_score, action=action,
+                          detector_status=detector_status)
+        status = result.status
+        if result.raw_score is not None:
+            score_str = f"{result.raw_score:.6f}"
+    except Exception as e:
+        # The detection layer must never break audit logging.
+        status = "SUSPICIOUS" if (detector_status and "UNKNOWN" in detector_status) else "NORMAL"
+        if raw_score is not None:
+            score_str = f"{raw_score:.6f}"
+        print(f"Detection classifier error: {e}")
 
     try:
         new_log = models.AuditLog(
@@ -369,7 +384,7 @@ def log_action(db: Session, user: str, action: str, details: str):
             action=action,
             details=details,
             timestamp=now,
-            severity=severity,
+            severity=status,
             anomaly_score=score_str,
         )
         db.add(new_log)
