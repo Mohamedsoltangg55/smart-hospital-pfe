@@ -34,12 +34,12 @@ services:
       - JWT_SECRET_KEY=your-super-secret-key-change-in-production
       - CORS_ORIGINS=http://localhost:5173,http://localhost:3000,http://frontend:5173
       - ENVIRONMENT=development
-      # --- Phase 3: AI analysis layer (Groq / Llama 3) ---
-      # MOCK_LLM=true -> offline canned analysis, no key/internet needed (demo-safe).
-      # For the real LLM: set GROQ_API_KEY, MOCK_LLM=false, then rebuild the backend.
-      - MOCK_LLM=true
-      - GROQ_API_KEY=
-      - LLM_MODEL=llama-3.3-70b-versatile
+      # --- AI analysis layer (Groq / Llama 3) — values come from .env ---
+      # .env is gitignored; see .env.example. MOCK_LLM defaults to true (demo-safe).
+      # For the real LLM: put GROQ_API_KEY + MOCK_LLM=false in .env, rebuild backend.
+      - MOCK_LLM=${MOCK_LLM:-true}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - LLM_MODEL=${LLM_MODEL:-llama-3.3-70b-versatile}
     depends_on:
       db:
         condition: service_healthy

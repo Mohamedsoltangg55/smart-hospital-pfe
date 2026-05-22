@@ -7,7 +7,9 @@ frontend/dist/
 __pycache__/
 *.pyc
 backend/venv/
-backend/.env
+
+# Environment files — never commit real secrets (.env.example is the template)
+.env
 
 # Claude Code local settings
 .claude/settings.local.json

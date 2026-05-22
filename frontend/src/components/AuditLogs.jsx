@@ -12,6 +12,8 @@ import {
 import client from '../api/client';
 import dayjs from 'dayjs';
 import StatusBadge, { normalizeStatus } from './security/StatusBadge';
+import AiAnalysisButton from './security/AiAnalysisButton';
+import AiAnalysisModal from './security/AiAnalysisModal';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -48,6 +50,11 @@ const AuditLog = () => {
   const [summary, setSummary] = useState({
     total_events: 0, security_violations: 0, ai_anomalies: 0, user_connections: 0,
   });
+
+  // AI analysis modal — keyed by the captured log record so the 15s table
+  // refresh cannot mismatch the analysis to the wrong row.
+  const [analysisLog, setAnalysisLog] = useState(null);
+  const [analysisOpen, setAnalysisOpen] = useState(false);
 
   // Debounce the search box, then push it to the server query.
   useEffect(() => {
@@ -193,6 +200,17 @@ const AuditLog = () => {
         </Space>
       ),
     },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 190,
+      render: (_, record) => (
+        <AiAnalysisButton
+          record={record}
+          onClick={(r) => { setAnalysisLog(r); setAnalysisOpen(true); }}
+        />
+      ),
+    },
   ];
 
   return (
@@ -314,6 +332,12 @@ const AuditLog = () => {
           .ant-table-thead > tr > th { background: #fafafa; font-weight: 600; }
         `}</style>
       </Card>
+
+      <AiAnalysisModal
+        open={analysisOpen}
+        log={analysisLog}
+        onClose={() => setAnalysisOpen(false)}
+      />
     </div>
   );
 };
