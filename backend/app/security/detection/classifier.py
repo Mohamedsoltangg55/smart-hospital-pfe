@@ -8,8 +8,8 @@ Hybrid pipeline:
     autoencoder (SECONDARY)  -> score_tier  (normalized 0..1 -> tier)
     final status = max(rule_tier, score_tier)   # signals only RAISE
 
-`decided_by` records which signal drove the final status so the UI and the
-(later) LLM-context layer can show *why*. The LLM never runs here.
+Also derives the section 6.1 fields: a 5-level `severity`, the list of
+`features_used`, and `decided_by`. The LLM never runs here.
 """
 from __future__ import annotations
 
@@ -23,13 +23,15 @@ from .score_normalizer import normalize
 
 @dataclass
 class Classification:
-    status: str                          # final: NORMAL | SUSPICIOUS | CRITICAL
+    status: str                          # final 3-tier: NORMAL | SUSPICIOUS | CRITICAL
     raw_score: Optional[float]           # raw autoencoder reconstruction error
     normalized_score: Optional[float]    # 0.0 - 1.0 percentile rank
     score_tier: str                      # tier from the autoencoder alone
     rule_tier: str                       # tier from the rule engine alone
     rule_overrides: List[str] = field(default_factory=list)  # fired rule names
     decided_by: str = "none"             # rule | autoencoder | both | none
+    severity: str = "INFO"               # 5-level: INFO|LOW|MEDIUM|HIGH|CRITICAL
+    features_used: List[str] = field(default_factory=list)
     reason: Optional[str] = None         # e.g. "model_not_calibrated"
 
 
@@ -47,13 +49,25 @@ def _rank(status: str) -> int:
     return config.STATUS_ORDER.index(status)
 
 
+def _severity_level(status: str, fired_rules: List[str]) -> str:
+    """Map the 3-tier status onto the 5-level section 6.1 severity."""
+    if status == config.STATUS_NORMAL:
+        return "INFO"
+    if status == config.STATUS_SUSPICIOUS:
+        return "MEDIUM"
+    # CRITICAL: an explicit security violation is the worst case.
+    if "SECURITY_VIOLATION" in fired_rules:
+        return "CRITICAL"
+    return "HIGH"
+
+
 def classify(
     raw_score: Optional[float],
     action: Optional[str] = None,
     detector_status: Optional[str] = None,
     context: Optional[RuleContext] = None,
 ) -> Classification:
-    """Map an autoencoder score + rule context onto a final 3-tier status.
+    """Map an autoencoder score + rule context onto a final classification.
 
     Pass a full `context` (RuleContext) to exercise every rule; passing only
     `action` builds a minimal context (action-based rules only)."""
@@ -65,7 +79,6 @@ def classify(
     score_tier = _tier_from_score(normalized)
     reason = None
     if normalized is None:
-        # No usable score. Distinguish "not calibrated" from "detector errored".
         if detector_status and "UNKNOWN" in detector_status.upper():
             score_tier = config.DETECTOR_ERROR_STATUS
             reason = "detector_error"
@@ -90,6 +103,11 @@ def classify(
     else:
         decided_by = "none"
 
+    # section 6.1 fields
+    features_used = list(fired)
+    if score_tier != config.STATUS_NORMAL:
+        features_used.append("AUTOENCODER_SCORE")
+
     return Classification(
         status=final,
         raw_score=raw_score,
@@ -98,5 +116,7 @@ def classify(
         rule_tier=rule_tier,
         rule_overrides=fired,
         decided_by=decided_by,
+        severity=_severity_level(final, fired),
+        features_used=features_used,
         reason=reason,
     )

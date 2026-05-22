@@ -70,8 +70,16 @@ class AuditLog(Base):
     action = Column(String)
     details = Column(String)
     timestamp = Column(DateTime)
-    severity = Column(String, default="NORMAL")  # NORMAL | SUSPICIOUS | SUSPICIOUS_UNKNOWN_PATTERN
-    anomaly_score = Column(String, nullable=True)  # reconstruction error (stringified)
+    severity = Column(String, default="NORMAL")  # 3-tier STATUS: NORMAL | SUSPICIOUS | CRITICAL
+    anomaly_score = Column(String, nullable=True)  # raw reconstruction error (stringified)
+    # --- Phase 2 (decision C): additive, nullable columns for the 6.1 schema ---
+    operator_role = Column(String, nullable=True)     # role derived from username
+    target_type = Column(String, nullable=True)       # e.g. PATIENT_FOLDER
+    target_ref = Column(String, nullable=True)        # e.g. patient_2
+    source_ip = Column(String, nullable=True)         # captured via middleware
+    detector = Column(String, nullable=True)          # detector identity
+    features_used = Column(String, nullable=True)     # JSON list of fired rules
+    anomaly_severity = Column(String, nullable=True)  # INFO|LOW|MEDIUM|HIGH|CRITICAL
 
 class NursingTask(Base):
     __tablename__ = "nursing_tasks"

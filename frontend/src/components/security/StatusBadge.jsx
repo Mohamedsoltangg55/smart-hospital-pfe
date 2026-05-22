@@ -20,9 +20,11 @@ export const normalizeStatus = (value) => {
 
 // A row is "flagged" (anomalous) when its status is SUSPICIOUS or CRITICAL.
 // Single source of truth for the badge, the row highlight and — later — the
-// "AI Security Analysis" button visibility.
+// "AI Security Analysis" button visibility. Accepts both the API DTO shape
+// (record.anomaly.status) and the legacy flat shape (record.severity).
 export const isFlagged = (record) => {
-  const s = normalizeStatus(record?.severity);
+  const raw = record?.anomaly?.status ?? record?.severity;
+  const s = normalizeStatus(raw);
   return s === 'SUSPICIOUS' || s === 'CRITICAL';
 };
 

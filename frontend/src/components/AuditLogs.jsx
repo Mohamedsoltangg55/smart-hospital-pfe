@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, Table, Tag, Typography, Space, Button, Input, DatePicker, Row, Col, Statistic } from 'antd';
+import { Card, Table, Tag, Typography, Space, Button, Input, DatePicker, Row, Col, Statistic, message } from 'antd';
 import {
   SafetyCertificateOutlined,
   SyncOutlined,
@@ -10,14 +10,13 @@ import {
   RobotOutlined
 } from '@ant-design/icons';
 import client from '../api/client';
-import StatusBadge, { normalizeStatus, isFlagged } from './security/StatusBadge';
 import dayjs from 'dayjs';
-import isBetween from 'dayjs/plugin/isBetween';
-
-dayjs.extend(isBetween);
+import StatusBadge, { normalizeStatus } from './security/StatusBadge';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
+
+const PAGE_SIZE_DEFAULT = 15;
 
 const getActionColor = (action) => {
   if (!action) return 'default';
@@ -33,84 +32,134 @@ const getActionColor = (action) => {
 };
 
 const AuditLog = () => {
-  const [logs, setLogs] = useState([]);
+  // Server-paginated data — the API is the single source of truth for
+  // filtering, so there is NO client-side search/date filtering here.
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [searchText, setSearchText] = useState('');
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_DEFAULT);
+
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');          // debounced -> server
   const [dateRange, setDateRange] = useState(null);
+  const [statusFilter, setStatusFilter] = useState(null);
+
+  const [summary, setSummary] = useState({
+    total_events: 0, security_violations: 0, ai_anomalies: 0, user_connections: 0,
+  });
+
+  // Debounce the search box, then push it to the server query.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await client.get('/audit-logs');
-      setLogs(res.data || []);
-    } catch (error) {
-      console.error("Erreur de chargement des logs:", error);
+      const params = { page, page_size: pageSize };
+      if (search) params.search = search;
+      if (statusFilter) params.status = statusFilter;
+      if (dateRange && dateRange[0] && dateRange[1]) {
+        params.from = dateRange[0].format('YYYY-MM-DD');
+        params.to = dateRange[1].format('YYYY-MM-DD');
+      }
+      const res = await client.get('/api/security/logs', { params });
+      const body = res.data || {};
+      if (body.error) {
+        message.error(`Erreur logs: ${body.error.message}`);
+        setItems([]);
+        setTotal(0);
+      } else if (body.data) {
+        setItems(body.data.items || []);
+        setTotal(body.data.page ? body.data.page.total : 0);
+      }
+    } catch (e) {
+      console.error('Erreur de chargement des logs:', e);
+      message.error('Impossible de charger les logs de sécurité.');
     } finally {
       setLoading(false);
     }
+  }, [page, pageSize, search, statusFilter, dateRange]);
+
+  const fetchSummary = useCallback(async () => {
+    try {
+      const res = await client.get('/api/security/logs/summary');
+      const body = res.data || {};
+      if (body.data) setSummary(body.data);
+    } catch (e) {
+      console.error('Erreur résumé KPI:', e);
+    }
   }, []);
 
+  // Refetch whenever a filter or the page changes.
+  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+  useEffect(() => { fetchSummary(); }, [fetchSummary]);
+
+  // 15s live polling — current page + KPI counters.
   useEffect(() => {
-    fetchLogs();
-    const interval = setInterval(fetchLogs, 15000);
+    const interval = setInterval(() => { fetchLogs(); fetchSummary(); }, 15000);
     return () => clearInterval(interval);
-  }, [fetchLogs]);
+  }, [fetchLogs, fetchSummary]);
 
-  const filteredLogs = logs.filter(log => {
-    const matchesText = 
-      (log.user || 'Système').toLowerCase().includes(searchText.toLowerCase()) ||
-      (log.action || '').toLowerCase().includes(searchText.toLowerCase()) ||
-      (log.details || '').toLowerCase().includes(searchText.toLowerCase());
+  const handleRefresh = () => { fetchLogs(); fetchSummary(); };
 
-    let matchesDate = true;
-    if (dateRange && dateRange[0] && dateRange[1]) {
-      const logDate = dayjs(log.timestamp);
-      matchesDate = logDate.isBetween(dateRange[0], dateRange[1], 'day', '[]');
+  // AntD Table -> server-side pagination + status filter.
+  const handleTableChange = (pagination, filters) => {
+    if (pagination.current !== page) setPage(pagination.current);
+    if (pagination.pageSize !== pageSize) {
+      setPageSize(pagination.pageSize);
+      setPage(1);
     }
-
-    return matchesText && matchesDate;
-  });
-
-  const todayLogs = logs.filter(l => dayjs(l.timestamp).isSame(dayjs(), 'day'));
-  const securityAlerts = todayLogs.filter(l => (l.action || '').includes('SECURITY_VIOLATION')).length;
-  const loginsToday = todayLogs.filter(l => (l.action || '').includes('USER_LOGIN')).length;
-  const aiAnomaliesToday = todayLogs.filter(l => isFlagged(l)).length;
+    const sv = (filters && filters.severity && filters.severity[0]) || null;
+    if (sv !== statusFilter) {
+      setStatusFilter(sv);
+      setPage(1);
+    }
+  };
 
   const columns = [
-    { 
-      title: 'Date & Heure', 
-      dataIndex: 'timestamp', 
-      key: 'time', 
-      render: (t) => <Text strong>{dayjs(t).format('DD/MM/YYYY HH:mm:ss')}</Text>, 
+    {
+      title: 'Date & Heure',
+      dataIndex: 'timestamp',
+      key: 'time',
+      render: (t) => <Text strong>{t ? dayjs(t).format('DD/MM/YYYY HH:mm:ss') : '—'}</Text>,
       width: 170,
-      sorter: (a, b) => new Date(a.timestamp) - new Date(b.timestamp),
-      defaultSortOrder: 'descend'
     },
-    { 
-      title: 'Opérateur', 
-      dataIndex: 'user', 
-      key: 'user', 
-      render: (u) => <Tag color="default" style={{ fontWeight: 600, fontSize: '13px' }}>👤 {u || 'Système'}</Tag>, 
-      width: 160 
+    {
+      title: 'Opérateur',
+      dataIndex: 'operator',
+      key: 'user',
+      render: (op) => (
+        <Space direction="vertical" size={0}>
+          <Tag color="default" style={{ fontWeight: 600, fontSize: '13px' }}>👤 {op?.username || 'Système'}</Tag>
+          {op?.role && <Text type="secondary" style={{ fontSize: 11 }}>{op.role}</Text>}
+        </Space>
+      ),
+      width: 170,
     },
-    { 
-      title: 'Type d\'Action', 
-      dataIndex: 'action', 
-      key: 'action', 
+    {
+      title: 'Type d\'Action',
+      dataIndex: 'action_type',
+      key: 'action',
       render: (act) => (
         <Tag color={getActionColor(act)} style={{ fontWeight: 'bold', padding: '4px 10px', borderRadius: '4px' }}>
           {act || 'UNKNOWN_ACTION'}
         </Tag>
-      ), 
-      width: 250 
+      ),
+      width: 240,
     },
     {
       title: 'Détails de l\'événement',
-      dataIndex: 'details',
+      dataIndex: 'event_details',
       key: 'details',
       render: (text) => {
         if (!text) return '';
-        if (text.includes("Hash:")) {
+        if (text.includes('Hash:')) {
           return (
             <Space>
               <UnlockOutlined style={{ color: '#52c41a' }} />
@@ -119,11 +168,11 @@ const AuditLog = () => {
           );
         }
         return text;
-      }
+      },
     },
     {
       title: 'IA Sécurité',
-      dataIndex: 'severity',
+      dataIndex: 'anomaly',
       key: 'severity',
       width: 170,
       filters: [
@@ -131,32 +180,33 @@ const AuditLog = () => {
         { text: 'Suspect', value: 'SUSPICIOUS' },
         { text: 'Critique', value: 'CRITICAL' },
       ],
-      onFilter: (value, record) => normalizeStatus(record.severity) === value,
-      render: (severity, record) => (
+      filterMultiple: false,
+      filteredValue: statusFilter ? [statusFilter] : null,
+      render: (anomaly) => (
         <Space direction="vertical" size={0}>
-          <StatusBadge status={severity} />
-          {record.anomaly_score && (
+          <StatusBadge status={anomaly?.status} />
+          {anomaly && anomaly.score != null && (
             <Text type="secondary" style={{ fontSize: 11 }}>
-              score: {Number(record.anomaly_score).toFixed(4)}
+              score: {Number(anomaly.score).toFixed(4)}
             </Text>
           )}
         </Space>
-      )
-    }
+      ),
+    },
   ];
 
   return (
     <div style={{ padding: '24px', background: '#f0f2f5', minHeight: '100vh', animation: 'fadeIn 0.4s' }}>
-      
+
       <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <Title level={2} style={{ margin: 0, color: '#141414' }}>
-            <SafetyCertificateOutlined style={{ color: '#1890ff', marginRight: 12 }} /> 
+            <SafetyCertificateOutlined style={{ color: '#1890ff', marginRight: 12 }} />
             Centre de Contrôle & Audit
           </Title>
           <Text type="secondary" style={{ fontSize: 15 }}>Surveillance en temps réel de toutes les actions du système d'information hospitalier.</Text>
         </div>
-        <Button type="primary" icon={<SyncOutlined />} onClick={fetchLogs} loading={loading} size="large" style={{ borderRadius: 8 }}>
+        <Button type="primary" icon={<SyncOutlined />} onClick={handleRefresh} loading={loading} size="large" style={{ borderRadius: 8 }}>
           Rafraîchir les logs
         </Button>
       </div>
@@ -166,27 +216,27 @@ const AuditLog = () => {
           <Card style={{ borderRadius: 12, borderLeft: '5px solid #1890ff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
             <Statistic
               title={<Text strong style={{ color: '#8c8c8c' }}>Total des événements (Aujourd'hui)</Text>}
-              value={todayLogs.length}
+              value={summary.total_events}
               prefix={<EyeOutlined style={{ color: '#1890ff' }} />}
               valueStyle={{ fontWeight: 800, color: '#141414' }}
             />
           </Card>
         </Col>
         <Col span={6}>
-          <Card style={{ borderRadius: 12, borderLeft: '5px solid #ff4d4f', background: securityAlerts > 0 ? '#fff1f0' : '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+          <Card style={{ borderRadius: 12, borderLeft: '5px solid #ff4d4f', background: summary.security_violations > 0 ? '#fff1f0' : '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
             <Statistic
               title={<Text strong style={{ color: '#8c8c8c' }}>Violations de Sécurité (Aujourd'hui)</Text>}
-              value={securityAlerts}
+              value={summary.security_violations}
               prefix={<AlertOutlined style={{ color: '#ff4d4f' }} />}
               valueStyle={{ fontWeight: 800, color: '#ff4d4f' }}
             />
           </Card>
         </Col>
         <Col span={6}>
-          <Card style={{ borderRadius: 12, borderLeft: '5px solid #fa8c16', background: aiAnomaliesToday > 0 ? '#fff7e6' : '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+          <Card style={{ borderRadius: 12, borderLeft: '5px solid #fa8c16', background: summary.ai_anomalies > 0 ? '#fff7e6' : '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
             <Statistic
               title={<Text strong style={{ color: '#8c8c8c' }}>Anomalies IA (Aujourd'hui)</Text>}
-              value={aiAnomaliesToday}
+              value={summary.ai_anomalies}
               prefix={<RobotOutlined style={{ color: '#fa8c16' }} />}
               valueStyle={{ fontWeight: 800, color: '#fa8c16' }}
             />
@@ -196,7 +246,7 @@ const AuditLog = () => {
           <Card style={{ borderRadius: 12, borderLeft: '5px solid #52c41a', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
             <Statistic
               title={<Text strong style={{ color: '#8c8c8c' }}>Connexions Utilisateurs (Aujourd'hui)</Text>}
-              value={loginsToday}
+              value={summary.user_connections}
               prefix={<UnlockOutlined style={{ color: '#52c41a' }} />}
               valueStyle={{ fontWeight: 800, color: '#52c41a' }}
             />
@@ -207,21 +257,21 @@ const AuditLog = () => {
       <Card style={{ marginBottom: 16, borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }} bodyStyle={{ padding: '16px 24px' }}>
         <Row gutter={16}>
           <Col span={14}>
-            <Input 
-              placeholder="Rechercher un opérateur, une action ou un détail..." 
-              prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />} 
-              value={searchText} 
-              onChange={e => setSearchText(e.target.value)} 
-              size="large" 
+            <Input
+              placeholder="Rechercher un opérateur, une action ou un détail..."
+              prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+              size="large"
               allowClear
               style={{ borderRadius: 8 }}
             />
           </Col>
           <Col span={10}>
-            <RangePicker 
-              style={{ width: '100%', borderRadius: 8 }} 
-              size="large" 
-              onChange={(dates) => setDateRange(dates)}
+            <RangePicker
+              style={{ width: '100%', borderRadius: 8 }}
+              size="large"
+              onChange={(dates) => { setDateRange(dates); setPage(1); }}
               placeholder={['Date de début', 'Date de fin']}
             />
           </Col>
@@ -229,19 +279,22 @@ const AuditLog = () => {
       </Card>
 
       <Card style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }} bodyStyle={{ padding: 0 }}>
-        <Table 
-          columns={columns} 
-          dataSource={filteredLogs} 
-          rowKey="id" 
-          loading={loading} 
-          size="middle" 
-          pagination={{ 
-            pageSize: 15, 
+        <Table
+          columns={columns}
+          dataSource={items}
+          rowKey="id"
+          loading={loading}
+          size="middle"
+          onChange={handleTableChange}
+          pagination={{
+            current: page,
+            pageSize: pageSize,
+            total: total,
             showSizeChanger: true,
-            showTotal: (total, range) => `${range[0]}-${range[1]} sur ${total} événements`
-          }} 
+            showTotal: (t, range) => `${range[0]}-${range[1]} sur ${t} événements`
+          }}
           rowClassName={(record) => {
-            const s = normalizeStatus(record.severity);
+            const s = normalizeStatus(record.anomaly?.status);
             if (s === 'CRITICAL') return 'ai-critical-row';
             if (s === 'SUSPICIOUS') return 'ai-suspicious-row';
             return '';

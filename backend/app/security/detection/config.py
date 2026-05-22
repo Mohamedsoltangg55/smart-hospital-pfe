@@ -19,6 +19,9 @@ STATUS_SUSPICIOUS = "SUSPICIOUS"
 STATUS_CRITICAL = "CRITICAL"
 STATUS_ORDER = [STATUS_NORMAL, STATUS_SUSPICIOUS, STATUS_CRITICAL]
 
+# Detector identity recorded on every classified event (section 6.1 schema).
+DETECTOR_NAME = "hybrid-v1 (autoencoder + rule_engine)"
+
 # ======================================================================
 #  Autoencoder score -> tier   (the SECONDARY signal)
 # ======================================================================
@@ -47,8 +50,10 @@ DETECTOR_ERROR_STATUS = STATUS_SUSPICIOUS  # detector genuinely errored -> be ca
 #  Rule engine   (the PRIMARY signal) -- deterministic, no training
 # ======================================================================
 # Office hours: a USER_LOGIN outside [START, END) counts as off-hours.
-OFFICE_HOURS_START = int(os.getenv("SECURITY_OFFICE_HOURS_START", "7"))
-OFFICE_HOURS_END = int(os.getenv("SECURITY_OFFICE_HOURS_END", "20"))
+# Pinned to a generous daytime window (06:00-22:00) so normal working-hours
+# and demo logins are NOT flagged; genuine deep-night access still trips it.
+OFFICE_HOURS_START = int(os.getenv("SECURITY_OFFICE_HOURS_START", "6"))
+OFFICE_HOURS_END = int(os.getenv("SECURITY_OFFICE_HOURS_END", "22"))
 
 # Lower-cased substrings in an event's details that indicate medical-record
 # access outside a legitimate consultation context.
