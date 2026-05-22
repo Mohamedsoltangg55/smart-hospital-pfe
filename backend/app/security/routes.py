@@ -17,7 +17,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
@@ -32,13 +32,37 @@ from .schemas import (
 )
 
 # ======================================================================
-#  TODO(Phase 5 - hardening): protect EVERY route in this router with
-#  require_role("admin", "security_officer"). Audit/security data must NOT
-#  remain unauthenticated -- enforce on the backend, not just in the UI.
-#  e.g.  dependencies=[Depends(require_role("admin", "security_officer"))]
+#  Phase 5 hardening: EVERY route in this router requires an authenticated
+#  user holding the "admin" or "security_officer" role. Audit/security data
+#  is never served unauthenticated -- this is enforced on the backend, not
+#  merely hidden in the UI.
 # ======================================================================
+SECURITY_ROLES = ("admin", "security_officer")
 
-router = APIRouter(prefix="/api/security", tags=["security"])
+
+async def require_security_role(request: Request, db: Session = Depends(get_db)):
+    """Auth guard applied to every /api/security/* route.
+
+    Resolves the JWT via main.get_current_user (lazy-imported: main.py
+    imports this module at line ~215, before require_role is defined, so a
+    top-level import would be circular) and rejects any user whose role is
+    not in SECURITY_ROLES with a 403.
+    """
+    from ..main import get_current_user  # lazy import -- avoids import cycle
+    user = await get_current_user(request, db)
+    if user.role not in SECURITY_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Access denied. Required role: {', '.join(SECURITY_ROLES)}",
+        )
+    return user
+
+
+router = APIRouter(
+    prefix="/api/security",
+    tags=["security"],
+    dependencies=[Depends(require_security_role)],
+)
 
 _VALID_STATUS = {"NORMAL", "SUSPICIOUS", "CRITICAL"}
 _MAX_PAGE_SIZE = 100
