@@ -3,13 +3,13 @@ classifier.py
 -------------
 The detection layer's SINGLE SOURCE OF TRUTH for an audit event's status.
 
-Pipeline:
-    raw autoencoder error  --normalize--> 0..1 score
-    0..1 score             --thresholds--> base status (NORMAL/SUSPICIOUS/CRITICAL)
-    base status            --rule engine-> final status (rules can only raise it)
+Hybrid pipeline:
+    rule engine (PRIMARY)    -> rule_tier   (deterministic, high precision)
+    autoencoder (SECONDARY)  -> score_tier  (normalized 0..1 -> tier)
+    final status = max(rule_tier, score_tier)   # signals only RAISE
 
-The badge, the row highlight and (later) the "AI Security Analysis" button all
-derive from `classify()`. The LLM layer never runs here.
+`decided_by` records which signal drove the final status so the UI and the
+(later) LLM-context layer can show *why*. The LLM never runs here.
 """
 from __future__ import annotations
 
@@ -17,16 +17,19 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 
 from . import config
-from .rule_engine import apply_rules
+from .rule_engine import RuleContext, evaluate
 from .score_normalizer import normalize
 
 
 @dataclass
 class Classification:
-    status: str                          # NORMAL | SUSPICIOUS | CRITICAL
+    status: str                          # final: NORMAL | SUSPICIOUS | CRITICAL
     raw_score: Optional[float]           # raw autoencoder reconstruction error
     normalized_score: Optional[float]    # 0.0 - 1.0 percentile rank
-    rule_overrides: List[str] = field(default_factory=list)
+    score_tier: str                      # tier from the autoencoder alone
+    rule_tier: str                       # tier from the rule engine alone
+    rule_overrides: List[str] = field(default_factory=list)  # fired rule names
+    decided_by: str = "none"             # rule | autoencoder | both | none
     reason: Optional[str] = None         # e.g. "model_not_calibrated"
 
 
@@ -40,38 +43,60 @@ def _tier_from_score(normalized: Optional[float]) -> str:
     return config.STATUS_NORMAL
 
 
-def _max_status(a: str, b: str) -> str:
-    order = config.STATUS_ORDER
-    return a if order.index(a) >= order.index(b) else b
+def _rank(status: str) -> int:
+    return config.STATUS_ORDER.index(status)
 
 
 def classify(
     raw_score: Optional[float],
-    action: str,
+    action: Optional[str] = None,
     detector_status: Optional[str] = None,
+    context: Optional[RuleContext] = None,
 ) -> Classification:
-    """Map an autoencoder score + action type onto a final 3-tier status."""
-    normalized = normalize(raw_score)
-    base = _tier_from_score(normalized)
-    reason = None
+    """Map an autoencoder score + rule context onto a final 3-tier status.
 
+    Pass a full `context` (RuleContext) to exercise every rule; passing only
+    `action` builds a minimal context (action-based rules only)."""
+    if context is None:
+        context = RuleContext(action=action or "")
+
+    # --- SECONDARY signal: autoencoder reconstruction error ---
+    normalized = normalize(raw_score)
+    score_tier = _tier_from_score(normalized)
+    reason = None
     if normalized is None:
-        # No usable score. Distinguish "not trained yet" from "detector errored".
+        # No usable score. Distinguish "not calibrated" from "detector errored".
         if detector_status and "UNKNOWN" in detector_status.upper():
-            base = config.DETECTOR_ERROR_STATUS
+            score_tier = config.DETECTOR_ERROR_STATUS
             reason = "detector_error"
         else:
-            base = config.COLD_START_STATUS
+            score_tier = config.COLD_START_STATUS
             reason = "model_not_calibrated"
 
-    # Rule engine: deterministic hard overrides; can only raise the status.
-    rule_min, fired = apply_rules(action)
-    final = _max_status(base, rule_min)
+    # --- PRIMARY signal: deterministic rule engine ---
+    rule_tier, fired = evaluate(context)
+
+    # --- hybrid merge: the higher status wins ---
+    final = score_tier if _rank(score_tier) >= _rank(rule_tier) else rule_tier
+
+    rule_drives = _rank(rule_tier) == _rank(final) and _rank(final) > 0
+    score_drives = _rank(score_tier) == _rank(final) and _rank(final) > 0
+    if rule_drives and score_drives:
+        decided_by = "both"
+    elif rule_drives:
+        decided_by = "rule"
+    elif score_drives:
+        decided_by = "autoencoder"
+    else:
+        decided_by = "none"
 
     return Classification(
         status=final,
         raw_score=raw_score,
         normalized_score=normalized,
+        score_tier=score_tier,
+        rule_tier=rule_tier,
         rule_overrides=fired,
+        decided_by=decided_by,
         reason=reason,
     )

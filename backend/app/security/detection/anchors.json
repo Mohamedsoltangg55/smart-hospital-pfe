@@ -1,0 +1,18 @@
+{
+  "source": "real_audit_logs",
+  "generated_at": "2026-05-22T14:01:36Z",
+  "n_samples": 22,
+  "excluded_actions": [
+    "SECURITY_VIOLATION"
+  ],
+  "note": "Interim anchors recomputed from real benign traffic. The autoencoder is trained on synthetic data; replace these by retraining the model once enough real logs exist.",
+  "anchors": {
+    "min": 0.016777,
+    "p50": 0.059766,
+    "p90": 0.11616070000000002,
+    "p95": 0.11818355,
+    "p98": 0.11892808,
+    "p99": 0.11917504,
+    "max": 0.119422
+  }
+}

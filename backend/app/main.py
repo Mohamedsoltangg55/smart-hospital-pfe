@@ -365,9 +365,33 @@ def log_action(db: Session, user: str, action: str, details: str):
     status = "NORMAL"
     score_str = None
     try:
+        from datetime import timedelta
         from .security.detection.classifier import classify
-        result = classify(raw_score=raw_score, action=action,
-                          detector_status=detector_status)
+        from .security.detection.rule_engine import RuleContext
+
+        # Recent events by the same operator -> feeds the burst rule.
+        recent_events = []
+        try:
+            lookback = now - timedelta(minutes=60)
+            recent_rows = (
+                db.query(models.AuditLog)
+                .filter(models.AuditLog.user == user)
+                .filter(models.AuditLog.timestamp >= lookback)
+                .order_by(models.AuditLog.timestamp.desc())
+                .limit(100)
+                .all()
+            )
+            recent_events = [
+                {"action": r.action, "timestamp": r.timestamp} for r in recent_rows
+            ]
+        except Exception:
+            recent_events = []
+
+        ctx = RuleContext(
+            action=action, details=details, timestamp=now,
+            user=user, recent_events=recent_events,
+        )
+        result = classify(raw_score=raw_score, detector_status=detector_status, context=ctx)
         status = result.status
         if result.raw_score is not None:
             score_str = f"{result.raw_score:.6f}"
