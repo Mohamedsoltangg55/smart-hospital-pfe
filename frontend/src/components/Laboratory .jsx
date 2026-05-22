@@ -63,7 +63,7 @@ const Laboratory = () => {
   const [submitting,  setSubmitting]  = useState(false);
   const [searchText,  setSearchText]  = useState('');
 
-  const techName = localStorage.getItem('username') || 'Laboratoire';
+  const techName = localStorage.getItem('username') || 'Laboratory';
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -72,7 +72,7 @@ const Laboratory = () => {
       setOrders(res.data);
     } catch (error) {
       console.error(error);
-      message.error('Impossible de charger la file d\'attente du laboratoire.');
+      message.error('Unable to load the laboratory queue.');
     } finally {
       setLoading(false);
     }
@@ -105,7 +105,7 @@ const Laboratory = () => {
     });
 
     if (combinedTemplate.length === 0) {
-      combinedTemplate = [{ parameter: 'Résultat Test', unit: '', ref_min: '', ref_max: '' }];
+      combinedTemplate = [{ parameter: 'Test Result', unit: '', ref_min: '', ref_max: '' }];
     }
 
     setRows(combinedTemplate.map(t => ({ ...t, value: '', flag: 'N' })));
@@ -128,7 +128,7 @@ const Laboratory = () => {
 
   const handleSubmit = async () => {
     if (rows.some(r => !r.parameter || r.value === '')) {
-      return message.warning('Veuillez remplir tous les paramètres et valeurs avant de soumettre.');
+      return message.warning('Please fill in all parameters and values before submitting.');
     }
     setSubmitting(true);
     try {
@@ -137,12 +137,12 @@ const Laboratory = () => {
         results: rows
       });
 
-      message.success('Résultats validés et envoyés au dossier du patient !');
+      message.success("Results validated and sent to the patient's folder!");
       setModalOpen(false);
       fetchOrders();
     } catch (error) {
       console.error(error.response);
-      message.error("Erreur lors de l'enregistrement des résultats.");
+      message.error("Error while saving the results.");
     } finally {
       setSubmitting(false);
     }
@@ -161,13 +161,13 @@ const Laboratory = () => {
           ${row.ref_min || ''} – ${row.ref_max || ''}
         </td>
         <td style="padding:10px 12px; border-bottom:1px solid #e8e8e8; font-size:14px;">
-          ${row.flag === 'H' ? '<span style="color:#cf1322">↑ Élevé</span>' : row.flag === 'L' ? '<span style="color:#1890ff">↓ Bas</span>' : row.flag === '!' ? '<span style="color:#cf1322; font-weight:bold;">⚠ CRITIQUE</span>' : '<span style="color:#52c41a">Normal</span>'}
+          ${row.flag === 'H' ? '<span style="color:#cf1322">↑ High</span>' : row.flag === 'L' ? '<span style="color:#1890ff">↓ Low</span>' : row.flag === '!' ? '<span style="color:#cf1322; font-weight:bold;">⚠ CRITICAL</span>' : '<span style="color:#52c41a">Normal</span>'}
         </td>
       </tr>`).join('');
 
     const win = window.open('', '_blank');
     win.document.write(`
-      <html><head><title>Compte-Rendu de Laboratoire - ${activeOrder?.patient_name}</title>
+      <html><head><title>Laboratory Report - ${activeOrder?.patient_name}</title>
       <style>
         body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 40px; color: #1a1a1a; max-width: 900px; margin: 0 auto; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
@@ -179,48 +179,48 @@ const Laboratory = () => {
         <div class="header">
           <div>
             <h1 style="color:#722ed1; margin:0; font-size: 28px;">🏥 Smart Hospital</h1>
-            <p style="margin:5px 0 0 0; color:#555; font-size: 14px;">Laboratoire d'Analyses de Biologie Médicale</p>
+            <p style="margin:5px 0 0 0; color:#555; font-size: 14px;">Medical Biology Analysis Laboratory</p>
           </div>
           <div style="text-align: right;">
-            <h2 style="margin: 0; color: #333;">RÉSULTATS D'ANALYSES</h2>
-            <p style="margin: 5px 0 0 0; color: #888; font-size: 12px;">Édité le ${dayjs().format('DD/MM/YYYY à HH:mm')}</p>
+            <h2 style="margin: 0; color: #333;">TEST RESULTS</h2>
+            <p style="margin: 5px 0 0 0; color: #888; font-size: 12px;">Issued on ${dayjs().format('DD/MM/YYYY [at] HH:mm')}</p>
           </div>
         </div>
         
         <div class="info-box">
           <table style="margin: 0;">
             <tr>
-              <td style="width: 50%;"><strong>Patient :</strong> <span style="font-size: 16px;">${activeOrder?.patient_name}</span></td>
-              <td><strong>Docteur Prescripteur :</strong> Dr. ${activeOrder?.doctor_name}</td>
+              <td style="width: 50%;"><strong>Patient:</strong> <span style="font-size: 16px;">${activeOrder?.patient_name}</span></td>
+              <td><strong>Prescribing Doctor:</strong> Dr. ${activeOrder?.doctor_name}</td>
             </tr>
             <tr>
-              <td><strong>NSS :</strong> ${activeOrder?.patient_nss || 'Non renseigné'}</td>
-              <td><strong>Technicien Biologiste :</strong> ${techName}</td>
+              <td><strong>NSS:</strong> ${activeOrder?.patient_nss || 'Not provided'}</td>
+              <td><strong>Lab Technician:</strong> ${techName}</td>
             </tr>
             <tr>
-              <td><strong>Date de Prélèvement :</strong> ${dayjs(activeOrder?.ordered_at).format('DD/MM/YYYY HH:mm')}</td>
-              <td><strong>Numéro de Dossier :</strong> LAB-${activeOrder?.id}</td>
+              <td><strong>Sample Date:</strong> ${dayjs(activeOrder?.ordered_at).format('DD/MM/YYYY HH:mm')}</td>
+              <td><strong>File Number:</strong> LAB-${activeOrder?.id}</td>
             </tr>
           </table>
         </div>
 
-        <h3 style="color: #333; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Examens réalisés : <span style="color: #722ed1;">${activeOrder?.test_name}</span></h3>
+        <h3 style="color: #333; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Tests performed: <span style="color: #722ed1;">${activeOrder?.test_name}</span></h3>
 
         <table>
           <thead>
             <tr>
-              <th style="padding:12px; text-align:left; border-radius: 6px 0 0 0;">Paramètre</th>
-              <th style="padding:12px; text-align:left;">Résultat</th>
-              <th style="padding:12px; text-align:left;">Unité</th>
-              <th style="padding:12px; text-align:left;">Valeurs de Référence</th>
-              <th style="padding:12px; text-align:left; border-radius: 0 6px 0 0;">Interprétation</th>
+              <th style="padding:12px; text-align:left; border-radius: 6px 0 0 0;">Parameter</th>
+              <th style="padding:12px; text-align:left;">Result</th>
+              <th style="padding:12px; text-align:left;">Unit</th>
+              <th style="padding:12px; text-align:left;">Reference Values</th>
+              <th style="padding:12px; text-align:left; border-radius: 0 6px 0 0;">Interpretation</th>
             </tr>
           </thead>
           <tbody>${tableRows}</tbody>
         </table>
 
         <div style="margin-top: 60px; text-align: right; padding-right: 40px;">
-          <p style="margin-bottom: 60px;"><strong>Signature du Biologiste :</strong></p>
+          <p style="margin-bottom: 60px;"><strong>Lab Technician Signature:</strong></p>
           <p style="color: #722ed1; font-weight: bold;">${techName}</p>
         </div>
       </body></html>`);
@@ -230,7 +230,7 @@ const Laboratory = () => {
 
   const columns = [
     {
-      title: 'Priorité',
+      title: 'Priority',
       dataIndex: 'urgency',
       key: 'urgency',
       width: 120,
@@ -255,7 +255,7 @@ const Laboratory = () => {
       ),
     },
     {
-      title: 'Analyses Demandées',
+      title: 'Requested Tests',
       key: 'test',
       render: (_, r) => (
         <Space>
@@ -265,13 +265,13 @@ const Laboratory = () => {
       ),
     },
     {
-      title: 'Prescrit Par',
+      title: 'Prescribed By',
       dataIndex: 'doctor_name',
       key: 'doctor_name',
       render: (d) => <Text type="secondary">Dr. {d}</Text>
     },
     {
-      title: 'Heure',
+      title: 'Time',
       dataIndex: 'ordered_at',
       key: 'ordered_at',
       render: (t) => (
@@ -282,10 +282,10 @@ const Laboratory = () => {
       ),
     },
     {
-      title: 'Statut',
+      title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      render: (s) => s === 'In Progress' ? <Badge status="processing" text={<Text style={{ color: '#1890ff', fontWeight: 600 }}>En cours</Text>} /> : <Badge status="warning" text="En attente" />
+      render: (s) => s === 'In Progress' ? <Badge status="processing" text={<Text style={{ color: '#1890ff', fontWeight: 600 }}>In Progress</Text>} /> : <Badge status="warning" text="Pending" />
     },
     {
       title: 'Action',
@@ -293,7 +293,7 @@ const Laboratory = () => {
       align: 'center',
       render: (_, r) => (
         <Button type="primary" icon={<PlayCircleOutlined />} onClick={() => openResultModal(r)} style={{ borderRadius: 6, fontWeight: 600, background: '#722ed1', borderColor: '#722ed1' }}>
-          Traiter l'échantillon
+          Process Sample
         </Button>
       ),
     },
@@ -310,13 +310,13 @@ const Laboratory = () => {
       <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <Title level={2} style={{ margin: 0, color: '#141414' }}>
-            <ExperimentOutlined style={{ color: '#722ed1', marginRight: 12 }} /> 
-            Plateau Technique (Laboratoire)
+            <ExperimentOutlined style={{ color: '#722ed1', marginRight: 12 }} />
+            Technical Platform (Laboratory)
           </Title>
-          <Text type="secondary" style={{ fontSize: 15 }}>Gérez les prélèvements et saisissez les résultats des analyses.</Text>
+          <Text type="secondary" style={{ fontSize: 15 }}>Manage samples and enter test results.</Text>
         </div>
         <Button icon={<SyncOutlined />} onClick={fetchOrders} loading={loading} size="large" style={{ borderRadius: 8 }}>
-          Actualiser
+          Refresh
         </Button>
       </div>
 
@@ -324,7 +324,7 @@ const Laboratory = () => {
         <Col span={8}>
           <Card style={{ borderRadius: 12, background: '#f9f0ff', borderLeft: '5px solid #722ed1', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
             <Statistic 
-              title={<Text style={{ color: '#531dab', fontWeight: 600 }}>Total en attente</Text>} 
+              title={<Text style={{ color: '#531dab', fontWeight: 600 }}>Total Pending</Text>}
               value={orders.length} 
               prefix={<ExperimentOutlined style={{ color: '#722ed1' }} />} 
               valueStyle={{ color: '#722ed1', fontWeight: 800, fontSize: 32 }} 
@@ -334,7 +334,7 @@ const Laboratory = () => {
         <Col span={8}>
           <Card style={{ borderRadius: 12, background: '#fff1f0', borderLeft: '5px solid #ff4d4f', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
             <Statistic 
-              title={<Text style={{ color: '#a8071a', fontWeight: 600 }}>Urgences STAT</Text>} 
+              title={<Text style={{ color: '#a8071a', fontWeight: 600 }}>STAT Emergencies</Text>}
               value={orders.filter(o => o.urgency === 'STAT').length} 
               prefix={<ThunderboltOutlined style={{ color: '#ff4d4f' }} />} 
               valueStyle={{ color: '#ff4d4f', fontWeight: 800, fontSize: 32 }} 
@@ -344,10 +344,10 @@ const Laboratory = () => {
       </Row>
 
       <Card 
-        title={<span style={{ fontWeight: 700 }}>File d'attente des Prélèvements</span>} 
+        title={<span style={{ fontWeight: 700 }}>Sample Queue</span>}
         extra={
-          <Input 
-            placeholder="Rechercher un patient ou un test..." 
+          <Input
+            placeholder="Search for a patient or test..."
             prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />} 
             onChange={e => setSearchText(e.target.value)}
             style={{ width: 300, borderRadius: 8 }}
@@ -364,7 +364,7 @@ const Laboratory = () => {
           pagination={{ pageSize: 10 }} 
           rowClassName={(r) => r.urgency === 'STAT' ? 'lab-row-stat' : r.urgency === 'Urgent' ? 'lab-row-urgent' : ''} 
           size="middle" 
-          locale={{ emptyText: <Empty description="Aucune analyse en attente. Excellent travail !" /> }}
+          locale={{ emptyText: <Empty description="No pending tests. Great work!" /> }}
         />
         <style>{`.lab-row-stat td { background: #fff1f0 !important; } .lab-row-urgent td { background: #fffbe6 !important; }`}</style>
       </Card>
@@ -372,15 +372,15 @@ const Laboratory = () => {
       <Modal 
         title={
           <Space style={{ width: '100%', justifyContent: 'space-between', paddingRight: 24 }}>
-            <span><ExperimentOutlined style={{ color: '#722ed1', marginRight: 8 }} /> Saisie des résultats biométriques</span>
-            <Button icon={<PrinterOutlined />} onClick={printReport} style={{ borderRadius: 6 }}>Aperçu Impression</Button>
+            <span><ExperimentOutlined style={{ color: '#722ed1', marginRight: 8 }} /> Enter biometric results</span>
+            <Button icon={<PrinterOutlined />} onClick={printReport} style={{ borderRadius: 6 }}>Print Preview</Button>
           </Space>
-        } 
-        open={modalOpen} 
-        onCancel={() => setModalOpen(false)} 
-        onOk={handleSubmit} 
-        okText="Valider & Archiver (Envoyer au Médecin)" 
-        cancelText="Fermer" 
+        }
+        open={modalOpen}
+        onCancel={() => setModalOpen(false)}
+        onOk={handleSubmit}
+        okText="Validate & Archive (Send to Doctor)"
+        cancelText="Close"
         width={950} 
         okButtonProps={{ loading: submitting, style: { background: '#722ed1', borderColor: '#722ed1', fontWeight: 600, borderRadius: 6 } }}
       >
@@ -388,29 +388,29 @@ const Laboratory = () => {
           <>
             <div style={{ background: '#f9f0ff', border: '1px solid #d3adf7', borderRadius: 8, padding: '16px', marginBottom: 20, display: 'flex', justifyContent: 'space-between' }}>
               <div><Text type="secondary" style={{ fontSize: 12 }}>PATIENT</Text><br /><Text strong style={{ fontSize: 16 }}>{activeOrder.patient_name}</Text></div>
-              <div><Text type="secondary" style={{ fontSize: 12 }}>DOCTEUR</Text><br /><Text strong>Dr. {activeOrder.doctor_name}</Text></div>
-              <div><Text type="secondary" style={{ fontSize: 12 }}>ANALYSES DEMANDÉES</Text><br /><Text strong style={{ color: '#722ed1' }}>{activeOrder.test_name}</Text></div>
+              <div><Text type="secondary" style={{ fontSize: 12 }}>DOCTOR</Text><br /><Text strong>Dr. {activeOrder.doctor_name}</Text></div>
+              <div><Text type="secondary" style={{ fontSize: 12 }}>REQUESTED TESTS</Text><br /><Text strong style={{ color: '#722ed1' }}>{activeOrder.test_name}</Text></div>
             </div>
             
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1fr 90px 40px', gap: '8px', marginBottom: 12, paddingLeft: 8 }}>
-              {['Paramètre / Examen', 'Valeur Mesurée', 'Unité', 'Réf. min', 'Réf. max', 'Interprétation', ''].map(h => <Text key={h} type="secondary" style={{ fontSize: 12, fontWeight: 700 }}>{h}</Text>)}
+              {['Parameter / Test', 'Measured Value', 'Unit', 'Ref. min', 'Ref. max', 'Interpretation', ''].map(h => <Text key={h} type="secondary" style={{ fontSize: 12, fontWeight: 700 }}>{h}</Text>)}
             </div>
             
             <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '8px' }}>
               {rows.map((row, idx) => (
                 <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1fr 90px 40px', gap: '8px', marginBottom: 10, padding: '10px 8px', borderRadius: 8, background: row.flag === '!' ? '#fff1f0' : row.flag === 'H' || row.flag === 'L' ? '#fffbe6' : '#fafafa', border: '1px solid #f0f0f0', alignItems: 'center' }}>
-                  <Input value={row.parameter} onChange={e => updateRow(idx, 'parameter', e.target.value)} placeholder="Nom du paramètre" />
-                  <Input value={row.value} onChange={e => updateRow(idx, 'value', e.target.value)} placeholder="Résultat" style={{ fontWeight: 700, borderColor: row.flag !== 'N' ? '#d9363e' : undefined }} />
-                  <Input value={row.unit} onChange={e => updateRow(idx, 'unit', e.target.value)} placeholder="Ex: g/L" />
+                  <Input value={row.parameter} onChange={e => updateRow(idx, 'parameter', e.target.value)} placeholder="Parameter name" />
+                  <Input value={row.value} onChange={e => updateRow(idx, 'value', e.target.value)} placeholder="Result" style={{ fontWeight: 700, borderColor: row.flag !== 'N' ? '#d9363e' : undefined }} />
+                  <Input value={row.unit} onChange={e => updateRow(idx, 'unit', e.target.value)} placeholder="e.g. g/L" />
                   <Input value={row.ref_min} onChange={e => updateRow(idx, 'ref_min', e.target.value)} />
                   <Input value={row.ref_max} onChange={e => updateRow(idx, 'ref_max', e.target.value)} />
                   <Select value={row.flag} onChange={v => updateRow(idx, 'flag', v)} style={{ width: '100%' }}>
                     <Select.Option value="N"><Tag color="default" style={{ margin: 0, display: 'block', textAlign: 'center' }}>Norm.</Tag></Select.Option>
-                    <Select.Option value="H"><Tag color="red" style={{ margin: 0, display: 'block', textAlign: 'center' }}>↑ Haut</Tag></Select.Option>
-                    <Select.Option value="L"><Tag color="blue" style={{ margin: 0, display: 'block', textAlign: 'center' }}>↓ Bas</Tag></Select.Option>
+                    <Select.Option value="H"><Tag color="red" style={{ margin: 0, display: 'block', textAlign: 'center' }}>↑ High</Tag></Select.Option>
+                    <Select.Option value="L"><Tag color="blue" style={{ margin: 0, display: 'block', textAlign: 'center' }}>↓ Low</Tag></Select.Option>
                     <Select.Option value="!"><Tag color="magenta" style={{ margin: 0, display: 'block', textAlign: 'center' }}>⚠ CRIT.</Tag></Select.Option>
                   </Select>
-                  <Tooltip title="Supprimer la ligne">
+                  <Tooltip title="Delete row">
                     <Button danger type="text" disabled={rows.length === 1} onClick={() => removeRow(idx)}>✕</Button>
                   </Tooltip>
                 </div>
@@ -418,7 +418,7 @@ const Laboratory = () => {
             </div>
             
             <Button type="dashed" block onClick={addRow} style={{ marginTop: 16, borderColor: '#722ed1', color: '#722ed1', height: 40, borderRadius: 8 }}>
-              + Ajouter un paramètre manuel
+              + Add a manual parameter
             </Button>
           </>
         )}

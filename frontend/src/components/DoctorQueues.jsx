@@ -6,7 +6,7 @@ import {
 } from '@ant-design/icons';
 import client from '../api/client'; 
 import useWebSocket from '../hooks/useWebSocket'; 
-import dayjs from 'dayjs'; // <-- L'import manquant qui causait le crash !
+import dayjs from 'dayjs'; // <-- The missing import that caused the crash!
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -230,8 +230,8 @@ const DoctorQueues = () => {
       await client.patch(`/hospitalizations/${patientToDischarge.id}/discharge`, { doctor_name: doctorUsername });
       const printWindow = window.open('', '_blank');
       printWindow.document.write(`
-        <html><head><title>Lettre de Sortie</title><style>body { font-family: Arial; padding: 40px; line-height: 1.6; } .header { text-align: center; border-bottom: 2px solid #10B981; padding-bottom: 20px; }</style></head>
-        <body><div class="header"><h1 style="color: #10B981; margin:0;">🏥 Smart Hospital</h1><h2>Lettre de Sortie</h2><p>Dr. ${doctorUsername}</p></div>
+        <html><head><title>Discharge Letter</title><style>body { font-family: Arial; padding: 40px; line-height: 1.6; } .header { text-align: center; border-bottom: 2px solid #10B981; padding-bottom: 20px; }</style></head>
+        <body><div class="header"><h1 style="color: #10B981; margin:0;">🏥 Smart Hospital</h1><h2>Discharge Letter</h2><p>Dr. ${doctorUsername}</p></div>
         <h3>Patient: ${patientToDischarge.patient_name}</h3><p>${values.summary.replace(/\n/g, '<br/>')}</p></body></html>
       `);
       printWindow.document.close();
@@ -252,26 +252,26 @@ const DoctorQueues = () => {
         doctor_name: doctorUsername,
         test_name: values.lab_tests.join(', '),
         test_category: "Consultation",
-        clinical_notes: values.notes || "Demande depuis le cabinet",
+        clinical_notes: values.notes || "Lab order from the consultation office",
         urgency: values.urgency || "Normal",
         appointment_id: activePatient.appointment.id
       });
-      message.success("Analyses demandées ! Le laboratoire a été notifié.");
+      message.success("Tests ordered! The laboratory has been notified.");
       setIsLabOrderModalOpen(false); labOrderForm.resetFields();
-    } catch (e) { message.error("Échec de la demande d'analyses."); } finally { setActionLoading(false); }
+    } catch (e) { message.error("Failed to order tests."); } finally { setActionLoading(false); }
   };
 
   const renderBedOptions = () => {
-    if (!selectedRoomForHosp) return <Option disabled>Veuillez choisir une salle</Option>;
+    if (!selectedRoomForHosp) return <Option disabled>Please choose a room</Option>;
     const roomName = selectedRoomForHosp.split('|')[1];
     const roomDetails = rooms.find(r => r.name === roomName);
     if (!roomDetails) return [];
     const capacity = roomDetails.capacity || 1;
     const beds = [];
     for (let i = 1; i <= capacity; i++) {
-      const bedName = `Lit ${i.toString().padStart(2, '0')}`;
+      const bedName = `Bed ${i.toString().padStart(2, '0')}`;
       const isOccupied = activeHospitalizations.some(h => h.room_name === roomName && h.bed_number === bedName);
-      beds.push(<Option key={bedName} value={bedName} disabled={isOccupied}>{bedName} {isOccupied ? "🔴 (Occupé)" : "🟢 (Libre)"}</Option>);
+      beds.push(<Option key={bedName} value={bedName} disabled={isOccupied}>{bedName} {isOccupied ? "🔴 (Occupied)" : "🟢 (Free)"}</Option>);
     }
     return beds;
   };
@@ -285,7 +285,7 @@ const DoctorQueues = () => {
           <Col>
             <Space size="large">
               <Title level={4} style={{ margin: 0 }}><UserOutlined /> Dr. {doctorUsername}</Title>
-              <Select placeholder="Choose Salle / Cabinet" value={myRoom} onChange={setMyRoom} style={{ width: 300 }} disabled={isOnline}>
+              <Select placeholder="Choose Room / Office" value={myRoom} onChange={setMyRoom} style={{ width: 300 }} disabled={isOnline}>
                 {rooms.map(r => <Option key={r.id || r.name} value={r.name}><b>{r.name}</b> ({r.department})</Option>)}
               </Select>
               <Space><Switch checked={isOnline} onChange={toggleStatus} /><Tag color={isOnline ? "green" : "red"}>{isOnline ? "ONLINE" : "OFFLINE"}</Tag></Space>
@@ -298,16 +298,16 @@ const DoctorQueues = () => {
         <Col span={10}>
           <Card style={{ borderRadius: '12px', minHeight: '550px' }}>
             <Tabs defaultActiveKey="1" items={[
-              { key: "1", label: "Salle d'Attente (Triage)", children: <Table dataSource={queue} columns={[
+              { key: "1", label: "Waiting Room (Triage)", children: <Table dataSource={queue} columns={[
                 { title: 'Ticket', render: (_, r) => <Tag color="blue">{r?.appointment?.ticket_number ?? '—'}</Tag> },
                 { title: 'Patient Name', render: (_, r) => <Text strong>{r?.patient?.first_name ?? 'Unknown'} {r?.patient?.last_name ?? ''}</Text> },
                 { title: 'Action', render: (_, r) => (r?.appointment?.status === "Waiting") ? <Button icon={<PlayCircleOutlined />} type="primary" onClick={() => handleCallPatient(r?.appointment?.id, r)}>Call Next</Button> : <Button icon={<MedicineBoxOutlined />} onClick={() => setActivePatient(r)}>Examine</Button> }
               ]} rowKey={r => r?.appointment?.id} pagination={{ pageSize: 5 }} /> },
-              { key: "2", label: `Mes Patients Hospitalisés (${wardPatients.length})`, children: <Table dataSource={wardPatients} columns={[
+              { key: "2", label: `My Inpatients (${wardPatients.length})`, children: <Table dataSource={wardPatients} columns={[
                 { title: 'Patient', dataIndex: 'patient_name', render: t => <b>{t}</b> },
-                { title: 'Salle', dataIndex: 'room_name', render: t => <Tag color="purple">{t}</Tag> },
-                { title: 'Lit', dataIndex: 'bed_number', render: t => <Tag color="cyan">{t}</Tag> },
-                { title: 'Action', render: (_, r) => <Button type="primary" danger icon={<SafetyCertificateOutlined />} onClick={() => { setPatientToDischarge(r); setIsDischargeModalOpen(true); }}>Sortie</Button> }
+                { title: 'Room', dataIndex: 'room_name', render: t => <Tag color="purple">{t}</Tag> },
+                { title: 'Bed', dataIndex: 'bed_number', render: t => <Tag color="cyan">{t}</Tag> },
+                { title: 'Action', render: (_, r) => <Button type="primary" danger icon={<SafetyCertificateOutlined />} onClick={() => { setPatientToDischarge(r); setIsDischargeModalOpen(true); }}>Discharge</Button> }
               ]} rowKey="id" pagination={{ pageSize: 5 }} /> }
             ]} />
           </Card>
@@ -332,72 +332,72 @@ const DoctorQueues = () => {
       </Row>
 
       {/* 🧪 NEW LAB ORDER MODAL */}
-      <Modal title="Demander des Analyses (Laboratoire)" open={isLabOrderModalOpen} onCancel={() => setIsLabOrderModalOpen(false)} onOk={() => labOrderForm.submit()} okText="Envoyer au Labo" confirmLoading={actionLoading}>
-        <Alert message="La demande sera immédiatement transmise au tableau de bord du laboratoire." type="info" showIcon style={{ marginBottom: 15 }} />
+      <Modal title="Order Tests (Laboratory)" open={isLabOrderModalOpen} onCancel={() => setIsLabOrderModalOpen(false)} onOk={() => labOrderForm.submit()} okText="Send to Lab" confirmLoading={actionLoading}>
+        <Alert message="The order will be immediately sent to the laboratory dashboard." type="info" showIcon style={{ marginBottom: 15 }} />
         <Form form={labOrderForm} layout="vertical" onFinish={handleOrderLab} initialValues={{ urgency: "Normal" }}>
-          <Form.Item name="lab_tests" label="Sélectionner les Analyses" rules={[{ required: true, message: 'Requis' }]}>
-            <Select mode="multiple" size="large" placeholder="Ex: FNS, Glycémie" disabled={labCatalogue.length === 0}>
+          <Form.Item name="lab_tests" label="Select the Tests" rules={[{ required: true, message: 'Required' }]}>
+            <Select mode="multiple" size="large" placeholder="e.g. CBC, Glucose" disabled={labCatalogue.length === 0}>
               {labCatalogue.map(test => <Option key={test.name} value={test.name}>{test.name}</Option>)}
             </Select>
           </Form.Item>
-          <Form.Item name="urgency" label="Priorité">
+          <Form.Item name="urgency" label="Priority">
             <Radio.Group>
               <Radio.Button value="Normal">Normal</Radio.Button>
               <Radio.Button value="Urgent">Urgent</Radio.Button>
-              <Radio.Button value="STAT" style={{ color: 'red' }}>STAT (Critique)</Radio.Button>
+              <Radio.Button value="STAT" style={{ color: 'red' }}>STAT (Critical)</Radio.Button>
             </Radio.Group>
           </Form.Item>
-          <Form.Item name="notes" label="Notes Cliniques (Optionnel)">
-            <TextArea rows={2} placeholder="Ex: Patient diabétique, vérifier HbA1c de près." />
+          <Form.Item name="notes" label="Clinical Notes (Optional)">
+            <TextArea rows={2} placeholder="e.g. Diabetic patient, monitor HbA1c closely." />
           </Form.Item>
         </Form>
       </Modal>
 
       {/* 🗂️ UPGRADED HISTORY MODAL WITH TABS */}
-      <Modal title="Dossier Médical du Patient" open={isHistoryModalOpen} onCancel={() => setIsHistoryModalOpen(false)} footer={null} width={800} bodyStyle={{ minHeight: 400 }}>
+      <Modal title="Patient Medical Folder" open={isHistoryModalOpen} onCancel={() => setIsHistoryModalOpen(false)} footer={null} width={800} bodyStyle={{ minHeight: 400 }}>
         <Tabs defaultActiveKey="1" items={[
-          { key: "1", label: "Consultations Passées", children: (
-            historyData.length === 0 ? <Empty description="Aucune consultation" /> :
+          { key: "1", label: "Past Consultations", children: (
+            historyData.length === 0 ? <Empty description="No consultations" /> :
             <Table rowKey="id" pagination={false} dataSource={historyData} size="small" columns={[
               { title: 'Date', dataIndex: 'scheduled_time', render: v => v ? dayjs(v).format('DD/MM/YYYY') : '—' },
-              { title: 'Docteur', dataIndex: 'doctor_name' },
-              { title: 'Diagnostic', dataIndex: 'diagnosis' },
-              { title: 'Traitement', dataIndex: 'treatment' }
+              { title: 'Doctor', dataIndex: 'doctor_name' },
+              { title: 'Diagnosis', dataIndex: 'diagnosis' },
+              { title: 'Treatment', dataIndex: 'treatment' }
             ]}/>
           )},
-          { key: "2", label: "Résultats Laboratoire", children: (
-            labHistoryData.length === 0 ? <Empty description="Aucune analyse" /> :
+          { key: "2", label: "Laboratory Results", children: (
+            labHistoryData.length === 0 ? <Empty description="No tests" /> :
             <Table rowKey="id" pagination={false} dataSource={labHistoryData} size="small" expandable={{
               expandedRowRender: record => (
                 <Table dataSource={record.results} rowKey="parameter" pagination={false} size="small" columns={[
-                  { title: 'Paramètre', dataIndex: 'parameter' },
-                  { title: 'Valeur', dataIndex: 'value', render: (v, r) => <Text strong style={{ color: r.flag === 'Normal' ? 'black' : 'red'}}>{v}</Text> },
-                  { title: 'Unité', dataIndex: 'unit' },
-                  { title: 'Interprétation', dataIndex: 'flag', render: f => <Tag color={f === 'Normal' ? 'green' : 'red'}>{f}</Tag> },
+                  { title: 'Parameter', dataIndex: 'parameter' },
+                  { title: 'Value', dataIndex: 'value', render: (v, r) => <Text strong style={{ color: r.flag === 'Normal' ? 'black' : 'red'}}>{v}</Text> },
+                  { title: 'Unit', dataIndex: 'unit' },
+                  { title: 'Interpretation', dataIndex: 'flag', render: f => <Tag color={f === 'Normal' ? 'green' : 'red'}>{f}</Tag> },
                 ]}/>
               )
             }} columns={[
               { title: 'Date', dataIndex: 'ordered_at', render: v => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—' },
-              { title: 'Analyses Demandées', dataIndex: 'test_name' },
-              { title: 'Statut', dataIndex: 'status', render: s => <Tag color={s === 'Completed' || s === 'Validated' ? 'green' : 'orange'}>{s}</Tag> },
-              { title: 'Technicien', dataIndex: 'lab_tech_name' }
+              { title: 'Requested Tests', dataIndex: 'test_name' },
+              { title: 'Status', dataIndex: 'status', render: s => <Tag color={s === 'Completed' || s === 'Validated' ? 'green' : 'orange'}>{s}</Tag> },
+              { title: 'Technician', dataIndex: 'lab_tech_name' }
             ]}/>
           )},
-          { key: "3", label: "Hospitalisations", children: (
-            hospHistoryData.length === 0 ? <Empty description="Aucun historique d'hospitalisation" /> :
+          { key: "3", label: "Hospitalizations", children: (
+            hospHistoryData.length === 0 ? <Empty description="No hospitalization history" /> :
             <Table rowKey="id" pagination={false} dataSource={hospHistoryData} size="small" columns={[
-              { title: 'Date d\'Admission', dataIndex: 'admission_date', render: v => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—' },
-              { title: 'Département', dataIndex: 'department' },
-              { title: 'Chambre/Lit', render: (_, r) => `${r.room_name} - Lit ${r.bed_number}` },
-              { title: 'Statut', dataIndex: 'status', render: s => <Tag color={s === 'Discharged' ? 'gray' : 'green'}>{s === 'Discharged' ? 'Sorti' : 'Occupé'}</Tag> },
-              { title: 'Date de Sortie', dataIndex: 'discharge_date', render: (v, r) => {
+              { title: 'Admission Date', dataIndex: 'admission_date', render: v => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—' },
+              { title: 'Department', dataIndex: 'department' },
+              { title: 'Room/Bed', render: (_, r) => `${r.room_name} - ${r.bed_number}` },
+              { title: 'Status', dataIndex: 'status', render: s => <Tag color={s === 'Discharged' ? 'gray' : 'green'}>{s === 'Discharged' ? 'Discharged' : 'Occupied'}</Tag> },
+              { title: 'Discharge Date', dataIndex: 'discharge_date', render: (v, r) => {
                   if (r.status !== 'Discharged') return '—';
                   if (!v) return '—';
                   const start = dayjs(r.admission_date);
                   const end = dayjs(v);
                   const days = end.diff(start, 'day');
                   const hours = end.diff(start, 'hour') % 24;
-                  return <span>{dayjs(v).format('DD/MM/YYYY HH:mm')}<br/><small style={{color:'gray'}}>Durée: {days}j {hours}h</small></span>;
+                  return <span>{dayjs(v).format('DD/MM/YYYY HH:mm')}<br/><small style={{color:'gray'}}>Duration: {days}d {hours}h</small></span>;
                 }
               }
             ]}/>
@@ -406,19 +406,19 @@ const DoctorQueues = () => {
       </Modal>
 
       {/* 🛏️ HOSPITALIZATION MODAL */}
-      <Modal title="Réserver un Lit" open={isHospitalModalOpen} onCancel={() => setIsHospitalModalOpen(false)} onOk={() => form.submit()} confirmLoading={actionLoading}>
+      <Modal title="Reserve a Bed" open={isHospitalModalOpen} onCancel={() => setIsHospitalModalOpen(false)} onOk={() => form.submit()} confirmLoading={actionLoading}>
         <Form form={form} layout="vertical" onFinish={handleHospitalize}>
-          <Form.Item name="room" label="Salle / Chambre" rules={[{ required: true }]}>
+          <Form.Item name="room" label="Room / Ward" rules={[{ required: true }]}>
             <Select>{rooms.filter(r => !r.type?.toLowerCase().includes("cabinet")).map(r => <Option key={`hosp-${r.id || r.name}`} value={`${r.department}|${r.name}`}>{r.department} - {r.name}</Option>)}</Select>
           </Form.Item>
-          <Form.Item name="bed" label="Lit" rules={[{ required: true }]}><Select>{renderBedOptions()}</Select></Form.Item>
+          <Form.Item name="bed" label="Bed" rules={[{ required: true }]}><Select>{renderBedOptions()}</Select></Form.Item>
         </Form>
       </Modal>
 
       {/* 🚪 DISCHARGE MODAL */}
-      <Modal title="Autorisation de Sortie" open={isDischargeModalOpen} onCancel={() => setIsDischargeModalOpen(false)} onOk={() => dischargeForm.submit()} okText="Imprimer Bon de Sortie" okButtonProps={{ danger: true }} confirmLoading={actionLoading}>
+      <Modal title="Discharge Authorization" open={isDischargeModalOpen} onCancel={() => setIsDischargeModalOpen(false)} onOk={() => dischargeForm.submit()} okText="Print Discharge Slip" okButtonProps={{ danger: true }} confirmLoading={actionLoading}>
         <Form form={dischargeForm} layout="vertical" onFinish={handleDischarge}>
-          <Form.Item name="summary" label="Résumé d'Hospitalisation" rules={[{ required: true }]}><TextArea rows={5} /></Form.Item>
+          <Form.Item name="summary" label="Hospitalization Summary" rules={[{ required: true }]}><TextArea rows={5} /></Form.Item>
         </Form>
       </Modal>
 

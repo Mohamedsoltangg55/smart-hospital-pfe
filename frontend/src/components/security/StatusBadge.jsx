@@ -2,12 +2,11 @@ import React from 'react';
 import { Tag } from 'antd';
 import { CheckCircleOutlined, WarningOutlined, FireOutlined } from '@ant-design/icons';
 
-// Presentation metadata for the 3-tier algorithmic status. French labels to
-// match the existing UI ("Centre de Contrôle & Audit").
+// Presentation metadata for the 3-tier algorithmic status.
 export const STATUS_META = {
-  NORMAL:     { color: 'green',  label: 'Normal',   icon: <CheckCircleOutlined /> },
-  SUSPICIOUS: { color: 'orange', label: 'Suspect',  icon: <WarningOutlined /> },
-  CRITICAL:   { color: 'red',    label: 'Critique', icon: <FireOutlined /> },
+  NORMAL:     { color: 'green',  label: 'Normal',     icon: <CheckCircleOutlined /> },
+  SUSPICIOUS: { color: 'orange', label: 'Suspicious', icon: <WarningOutlined /> },
+  CRITICAL:   { color: 'red',    label: 'Critical',   icon: <FireOutlined /> },
 };
 
 // Map any stored value (incl. legacy "SUSPICIOUS_UNKNOWN_PATTERN") to a tier.

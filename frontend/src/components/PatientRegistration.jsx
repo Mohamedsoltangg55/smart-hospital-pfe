@@ -89,7 +89,7 @@ const PatientRegistration = ({ onRegistered }) => {
           <div>
             <Text strong style={{ fontSize: '16px' }}>Smart NSS Generation Active</Text>
             <br/>
-            <Text type="secondary">The system will automatically generate a cryptographically unique Numéro de Sécurité Sociale based on the patient's demographics (Gender, Year of Birth, and Wilaya).</Text>
+            <Text type="secondary">The system will automatically generate a cryptographically unique Social Security Number (NSS) based on the patient's demographics (Gender, Year of Birth, and Wilaya).</Text>
           </div>
         </div>
 

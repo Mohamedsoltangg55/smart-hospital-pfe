@@ -78,7 +78,7 @@ const AuditLog = () => {
       const res = await client.get('/api/security/logs', { params });
       const body = res.data || {};
       if (body.error) {
-        message.error(`Erreur logs: ${body.error.message}`);
+        message.error(`Logs error: ${body.error.message}`);
         setItems([]);
         setTotal(0);
       } else if (body.data) {
@@ -86,8 +86,8 @@ const AuditLog = () => {
         setTotal(body.data.page ? body.data.page.total : 0);
       }
     } catch (e) {
-      console.error('Erreur de chargement des logs:', e);
-      message.error('Impossible de charger les logs de sécurité.');
+      console.error('Error loading logs:', e);
+      message.error('Unable to load security logs.');
     } finally {
       setLoading(false);
     }
@@ -99,7 +99,7 @@ const AuditLog = () => {
       const body = res.data || {};
       if (body.data) setSummary(body.data);
     } catch (e) {
-      console.error('Erreur résumé KPI:', e);
+      console.error('KPI summary error:', e);
     }
   }, []);
 
@@ -131,26 +131,26 @@ const AuditLog = () => {
 
   const columns = [
     {
-      title: 'Date & Heure',
+      title: 'Date & Time',
       dataIndex: 'timestamp',
       key: 'time',
       render: (t) => <Text strong>{t ? dayjs(t).format('DD/MM/YYYY HH:mm:ss') : '—'}</Text>,
       width: 170,
     },
     {
-      title: 'Opérateur',
+      title: 'Operator',
       dataIndex: 'operator',
       key: 'user',
       render: (op) => (
         <Space direction="vertical" size={0}>
-          <Tag color="default" style={{ fontWeight: 600, fontSize: '13px' }}>👤 {op?.username || 'Système'}</Tag>
+          <Tag color="default" style={{ fontWeight: 600, fontSize: '13px' }}>👤 {op?.username || 'System'}</Tag>
           {op?.role && <Text type="secondary" style={{ fontSize: 11 }}>{op.role}</Text>}
         </Space>
       ),
       width: 170,
     },
     {
-      title: 'Type d\'Action',
+      title: 'Action Type',
       dataIndex: 'action_type',
       key: 'action',
       render: (act) => (
@@ -161,7 +161,7 @@ const AuditLog = () => {
       width: 240,
     },
     {
-      title: 'Détails de l\'événement',
+      title: 'Event Details',
       dataIndex: 'event_details',
       key: 'details',
       render: (text) => {
@@ -178,14 +178,14 @@ const AuditLog = () => {
       },
     },
     {
-      title: 'IA Sécurité',
+      title: 'AI Security',
       dataIndex: 'anomaly',
       key: 'severity',
       width: 170,
       filters: [
         { text: 'Normal', value: 'NORMAL' },
-        { text: 'Suspect', value: 'SUSPICIOUS' },
-        { text: 'Critique', value: 'CRITICAL' },
+        { text: 'Suspicious', value: 'SUSPICIOUS' },
+        { text: 'Critical', value: 'CRITICAL' },
       ],
       filterMultiple: false,
       filteredValue: statusFilter ? [statusFilter] : null,
@@ -220,12 +220,12 @@ const AuditLog = () => {
         <div>
           <Title level={2} style={{ margin: 0, color: '#141414' }}>
             <SafetyCertificateOutlined style={{ color: '#1890ff', marginRight: 12 }} />
-            Centre de Contrôle & Audit
+            Control & Audit Center
           </Title>
-          <Text type="secondary" style={{ fontSize: 15 }}>Surveillance en temps réel de toutes les actions du système d'information hospitalier.</Text>
+          <Text type="secondary" style={{ fontSize: 15 }}>Real-time monitoring of all actions across the hospital information system.</Text>
         </div>
         <Button type="primary" icon={<SyncOutlined />} onClick={handleRefresh} loading={loading} size="large" style={{ borderRadius: 8 }}>
-          Rafraîchir les logs
+          Refresh logs
         </Button>
       </div>
 
@@ -233,7 +233,7 @@ const AuditLog = () => {
         <Col span={6}>
           <Card style={{ borderRadius: 12, borderLeft: '5px solid #1890ff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
             <Statistic
-              title={<Text strong style={{ color: '#8c8c8c' }}>Total des événements (Aujourd'hui)</Text>}
+              title={<Text strong style={{ color: '#8c8c8c' }}>Total Events (Today)</Text>}
               value={summary.total_events}
               prefix={<EyeOutlined style={{ color: '#1890ff' }} />}
               valueStyle={{ fontWeight: 800, color: '#141414' }}
@@ -243,7 +243,7 @@ const AuditLog = () => {
         <Col span={6}>
           <Card style={{ borderRadius: 12, borderLeft: '5px solid #ff4d4f', background: summary.security_violations > 0 ? '#fff1f0' : '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
             <Statistic
-              title={<Text strong style={{ color: '#8c8c8c' }}>Violations de Sécurité (Aujourd'hui)</Text>}
+              title={<Text strong style={{ color: '#8c8c8c' }}>Security Violations (Today)</Text>}
               value={summary.security_violations}
               prefix={<AlertOutlined style={{ color: '#ff4d4f' }} />}
               valueStyle={{ fontWeight: 800, color: '#ff4d4f' }}
@@ -253,7 +253,7 @@ const AuditLog = () => {
         <Col span={6}>
           <Card style={{ borderRadius: 12, borderLeft: '5px solid #fa8c16', background: summary.ai_anomalies > 0 ? '#fff7e6' : '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
             <Statistic
-              title={<Text strong style={{ color: '#8c8c8c' }}>Anomalies IA (Aujourd'hui)</Text>}
+              title={<Text strong style={{ color: '#8c8c8c' }}>AI Anomalies (Today)</Text>}
               value={summary.ai_anomalies}
               prefix={<RobotOutlined style={{ color: '#fa8c16' }} />}
               valueStyle={{ fontWeight: 800, color: '#fa8c16' }}
@@ -263,7 +263,7 @@ const AuditLog = () => {
         <Col span={6}>
           <Card style={{ borderRadius: 12, borderLeft: '5px solid #52c41a', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
             <Statistic
-              title={<Text strong style={{ color: '#8c8c8c' }}>Connexions Utilisateurs (Aujourd'hui)</Text>}
+              title={<Text strong style={{ color: '#8c8c8c' }}>User Logins (Today)</Text>}
               value={summary.user_connections}
               prefix={<UnlockOutlined style={{ color: '#52c41a' }} />}
               valueStyle={{ fontWeight: 800, color: '#52c41a' }}
@@ -276,7 +276,7 @@ const AuditLog = () => {
         <Row gutter={16}>
           <Col span={14}>
             <Input
-              placeholder="Rechercher un opérateur, une action ou un détail..."
+              placeholder="Search by operator, action or detail..."
               prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
               value={searchInput}
               onChange={e => setSearchInput(e.target.value)}
@@ -290,7 +290,7 @@ const AuditLog = () => {
               style={{ width: '100%', borderRadius: 8 }}
               size="large"
               onChange={(dates) => { setDateRange(dates); setPage(1); }}
-              placeholder={['Date de début', 'Date de fin']}
+              placeholder={['Start date', 'End date']}
             />
           </Col>
         </Row>
@@ -309,7 +309,7 @@ const AuditLog = () => {
             pageSize: pageSize,
             total: total,
             showSizeChanger: true,
-            showTotal: (t, range) => `${range[0]}-${range[1]} sur ${t} événements`
+            showTotal: (t, range) => `${range[0]}-${range[1]} of ${t} events`
           }}
           rowClassName={(record) => {
             const s = normalizeStatus(record.anomaly?.status);

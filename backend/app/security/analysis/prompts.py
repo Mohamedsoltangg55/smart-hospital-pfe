@@ -17,6 +17,8 @@ Hard rules:
 - Healthcare context: patient data is highly sensitive; unauthorized access is a
   privacy violation (GDPR / hospital confidentiality). Weigh severity accordingly.
 - Be precise, professional, and concise. No speculation presented as fact.
+- Write ALL output text (every JSON string value) in English, regardless of the
+  language of the event details.
 - Output ONLY valid JSON matching the provided schema. No text outside the JSON."""
 
 # The section 4 schema, embedded verbatim in the user prompt.
@@ -48,7 +50,7 @@ EVENT (read-only facts from the algorithm):
 - context_features: {features_used}
 - operator_recent_actions_5min: {recent_count}
 
-Return ONLY JSON in this exact schema:
+Return ONLY JSON in this exact schema, with every string value written in English:
 {schema}"""
 
 

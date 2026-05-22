@@ -66,9 +66,9 @@ const HospitalisationBeds = () => {
         const allRooms = superParse(settingsRes.data.rooms);
         setRooms(allRooms.filter(r => !r.type?.toLowerCase().includes("cabinet")));
       }
-    } catch (error) { 
-      console.error("Erreur de chargement Beds:", error);
-    } finally { 
+    } catch (error) {
+      console.error("Beds loading error:", error);
+    } finally {
       setLoading(false); 
     }
   };
@@ -112,36 +112,36 @@ const HospitalisationBeds = () => {
         bed_number: selectedBed.bedName,
         admission_date: dayjs().format('YYYY-MM-DD HH:mm:ss'),
         doctor_id: parseInt(localStorage.getItem('userId')) || 1, // Fallback to admin
-        doctor_name: localStorage.getItem('username') || "Chef de Service"
+        doctor_name: localStorage.getItem('username') || "Department Head"
       };
       await client.post('/hospitalizations/', payload);
-      message.success("Patient installé avec succès !");
+      message.success("Patient admitted successfully!");
       setIsAdmitModalOpen(false);
       fetchData(); // Force refresh to ensure sync
-    } catch (error) { 
-      message.error("Erreur lors de l'installation."); 
+    } catch (error) {
+      message.error("Error during admission.");
     }
   };
 
   // --- DISCHARGE PATIENT ---
   const handleDischarge = () => {
     Modal.confirm({
-      title: `Autoriser la sortie ?`,
-      content: `Voulez-vous vraiment libérer le lit de ${selectedBed.activeHosp.patient_name} ?`,
-      okText: 'Oui, Libérer',
+      title: `Authorize discharge?`,
+      content: `Do you really want to free ${selectedBed.activeHosp.patient_name}'s bed?`,
+      okText: 'Yes, Discharge',
       okButtonProps: { danger: true },
-      cancelText: 'Annuler',
+      cancelText: 'Cancel',
       onOk: async () => {
         try {
           await client.patch(`/hospitalizations/${selectedBed.activeHosp.id}/discharge`, {
             doctor_name: localStorage.getItem('username') || "Administration"
           });
-          message.success("Lit libéré avec succès.");
+          message.success("Bed freed successfully.");
           setIsOccupiedModalOpen(false);
           fetchData();
         } catch (e) {
           console.error("Discharge error:", e.response || e);
-          message.error("Erreur de libération: " + (e.response?.data?.detail || e.message)); 
+          message.error("Discharge error: " + (e.response?.data?.detail || e.message));
         }
       }
     });
@@ -157,7 +157,7 @@ const HospitalisationBeds = () => {
       // If your backend doesn't have a /transfer route, we patch the existing record.
       // (Assuming your backend allows patching room_name and bed_number on active hospitalizations)
       
-      message.loading({ content: "Transfert en cours...", key: "transfer" });
+      message.loading({ content: "Transfer in progress...", key: "transfer" });
       
       // Because we don't have a specific transfer route in the backend instructions, 
       // the safest architectural way is to Discharge the old bed and Admit to the new bed silently, 
@@ -179,17 +179,17 @@ const HospitalisationBeds = () => {
         doctor_name: selectedBed.activeHosp.doctor_name
       });
 
-      message.success({ content: "Patient transféré avec succès !", key: "transfer", duration: 2 });
+      message.success({ content: "Patient transferred successfully!", key: "transfer", duration: 2 });
       setIsTransferModalOpen(false);
       setIsOccupiedModalOpen(false);
       fetchData();
     } catch (e) {
-      message.error({ content: "Échec du transfert.", key: "transfer" });
+      message.error({ content: "Transfer failed.", key: "transfer" });
     }
   };
 
   const renderTransferBedOptions = () => {
-    if (!selectedNewRoomValue) return <Option disabled>Veuillez choisir une salle</Option>;
+    if (!selectedNewRoomValue) return <Option disabled>Please choose a room</Option>;
     
     const newRoomName = selectedNewRoomValue.split('|')[1];
     const targetRoom = rooms.find(r => r.name === newRoomName);
@@ -199,14 +199,14 @@ const HospitalisationBeds = () => {
     const beds = [];
 
     for (let i = 1; i <= capacity; i++) {
-      const bedName = `Lit ${i.toString().padStart(2, '0')}`;
+      const bedName = `Bed ${i.toString().padStart(2, '0')}`;
       const isOccupied = hospitalizations.some(h => h.room_name === newRoomName && h.bed_number === bedName);
       if (!isOccupied) { // Only show empty beds for transfer!
-        beds.push(<Option key={bedName} value={bedName}>{bedName} 🟢 (Libre)</Option>);
+        beds.push(<Option key={bedName} value={bedName}>{bedName} 🟢 (Free)</Option>);
       }
     }
-    
-    if (beds.length === 0) return <Option disabled>Aucun lit libre dans cette salle</Option>;
+
+    if (beds.length === 0) return <Option disabled>No free beds in this room</Option>;
     return beds;
   };
 
@@ -227,15 +227,15 @@ const HospitalisationBeds = () => {
       <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <Title level={2} style={{ margin: 0, color: '#141414' }}>
-            <AppstoreOutlined style={{ color: '#1890ff', marginRight: 12 }} /> 
-            Gestionnaire des Lits
+            <AppstoreOutlined style={{ color: '#1890ff', marginRight: 12 }} />
+            Bed Manager
           </Title>
-          <Text type="secondary" style={{ fontSize: 15 }}>Vue globale du taux d'occupation et gestion des transferts.</Text>
+          <Text type="secondary" style={{ fontSize: 15 }}>Global view of occupancy rate and transfer management.</Text>
         </div>
         <Space>
-          <Text strong>Filtrer par Pôle :</Text>
+          <Text strong>Filter by Department:</Text>
           <Select value={selectedDept} onChange={setSelectedDept} style={{ width: 200 }} size="large">
-            <Option value="ALL">🌟 Tous les Pôles</Option>
+            <Option value="ALL">🌟 All Departments</Option>
             {departments.map(d => <Option key={d.id || d.name} value={d.name}>{d.name}</Option>)}
           </Select>
         </Space>
@@ -245,29 +245,29 @@ const HospitalisationBeds = () => {
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col span={6}>
           <Card style={{ borderRadius: 12, background: '#fff', borderLeft: '5px solid #1890ff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-            <Statistic title={<Text style={{ fontWeight: 600 }}>Taux d'Occupation</Text>} value={occupancyRate} suffix="%" valueStyle={{ color: occupancyRate > 90 ? '#cf1322' : '#1890ff', fontWeight: 800 }} />
+            <Statistic title={<Text style={{ fontWeight: 600 }}>Occupancy Rate</Text>} value={occupancyRate} suffix="%" valueStyle={{ color: occupancyRate > 90 ? '#cf1322' : '#1890ff', fontWeight: 800 }} />
           </Card>
         </Col>
         <Col span={6}>
           <Card style={{ borderRadius: 12, background: '#fff', borderLeft: '5px solid #595959', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-            <Statistic title={<Text style={{ fontWeight: 600 }}>Capacité Totale (Lits)</Text>} value={totalBeds} valueStyle={{ color: '#595959', fontWeight: 800 }} />
+            <Statistic title={<Text style={{ fontWeight: 600 }}>Total Capacity (Beds)</Text>} value={totalBeds} valueStyle={{ color: '#595959', fontWeight: 800 }} />
           </Card>
         </Col>
         <Col span={6}>
           <Card style={{ borderRadius: 12, background: '#fff1f0', borderLeft: '5px solid #ff4d4f', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-            <Statistic title={<Text style={{ fontWeight: 600 }}>Lits Occupés</Text>} value={occupiedBedsCount} valueStyle={{ color: '#ff4d4f', fontWeight: 800 }} />
+            <Statistic title={<Text style={{ fontWeight: 600 }}>Occupied Beds</Text>} value={occupiedBedsCount} valueStyle={{ color: '#ff4d4f', fontWeight: 800 }} />
           </Card>
         </Col>
         <Col span={6}>
           <Card style={{ borderRadius: 12, background: '#f6ffed', borderLeft: '5px solid #52c41a', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-            <Statistic title={<Text style={{ fontWeight: 600 }}>Lits Disponibles</Text>} value={totalBeds - occupiedBedsCount} valueStyle={{ color: '#52c41a', fontWeight: 800 }} />
+            <Statistic title={<Text style={{ fontWeight: 600 }}>Available Beds</Text>} value={totalBeds - occupiedBedsCount} valueStyle={{ color: '#52c41a', fontWeight: 800 }} />
           </Card>
         </Col>
       </Row>
 
       {/* ── WARD MAP ── */}
       {displayedRooms.length === 0 ? (
-        <Empty description="Aucune salle configurée pour l'hospitalisation. Veuillez configurer les paramètres système." style={{ marginTop: 50 }} />
+        <Empty description="No rooms configured for hospitalization. Please configure system settings." style={{ marginTop: 50 }} />
       ) : (
         <Row gutter={[20, 20]}>
           {displayedRooms.map(room => {
@@ -284,12 +284,12 @@ const HospitalisationBeds = () => {
                 >
                   <Row gutter={[12, 12]}>
                     {beds.map(num => {
-                      const bedLabel = `Lit ${num.toString().padStart(2, '0')}`;
+                      const bedLabel = `Bed ${num.toString().padStart(2, '0')}`;
                       const activeHosp = hospitalizations.find(h => h.room_name === room.name && h.bed_number === bedLabel);
                       
                       return (
                         <Col span={capacity > 1 ? 12 : 24} key={num}>
-                          <Tooltip title={activeHosp ? `Gérer le lit de ${activeHosp.patient_name}` : `Installer un patient au ${bedLabel}`}>
+                          <Tooltip title={activeHosp ? `Manage ${activeHosp.patient_name}'s bed` : `Admit a patient to ${bedLabel}`}>
                             <div 
                               onClick={() => handleBedClick(room, bedLabel, activeHosp)}
                               style={{ 
@@ -315,7 +315,7 @@ const HospitalisationBeds = () => {
                                     </Text>
                                   </div>
                                 ) : (
-                                  <Text type="success" style={{ fontSize: '13px', fontWeight: 600 }}>Disponible</Text>
+                                  <Text type="success" style={{ fontSize: '13px', fontWeight: 600 }}>Available</Text>
                                 )}
                               </div>
                             </div>
@@ -333,19 +333,19 @@ const HospitalisationBeds = () => {
 
       {/* ── MODAL: ADMIT PATIENT (Empty Bed) ── */}
       <Modal 
-        title={<Space><CheckCircleOutlined style={{ color: '#52c41a' }}/> Installation Patient</Space>} 
-        open={isAdmitModalOpen} 
-        onOk={() => form.submit()} 
+        title={<Space><CheckCircleOutlined style={{ color: '#52c41a' }}/> Patient Admission</Space>}
+        open={isAdmitModalOpen}
+        onOk={() => form.submit()}
         onCancel={() => setIsAdmitModalOpen(false)}
-        okText="Installer le patient"
-        cancelText="Annuler"
+        okText="Admit patient"
+        cancelText="Cancel"
       >
         <div style={{ background: '#f6ffed', padding: 12, borderRadius: 8, marginBottom: 16, border: '1px solid #b7eb8f' }}>
-          <Text strong>Emplacement : </Text> {selectedBed?.room.department} &gt; {selectedBed?.room.name} &gt; {selectedBed?.bedName}
+          <Text strong>Location: </Text> {selectedBed?.room.department} &gt; {selectedBed?.room.name} &gt; {selectedBed?.bedName}
         </div>
         <Form form={form} layout="vertical" onFinish={handleAdmit}>
-          <Form.Item name="patient_id" label="Sélectionner le Patient" rules={[{ required: true, message: 'Requis' }]}>
-            <Select showSearch placeholder="Rechercher par nom..." size="large" filterOption={(input, option) => (option?.children ?? '').toLowerCase().includes(input.toLowerCase())}>
+          <Form.Item name="patient_id" label="Select the Patient" rules={[{ required: true, message: 'Required' }]}>
+            <Select showSearch placeholder="Search by name..." size="large" filterOption={(input, option) => (option?.children ?? '').toLowerCase().includes(input.toLowerCase())}>
               {patients.map(p => <Option key={p.id} value={p.id}>{p.first_name} {p.last_name}</Option>)}
             </Select>
           </Form.Item>
@@ -354,8 +354,8 @@ const HospitalisationBeds = () => {
 
       {/* ── MODAL: MANAGE OCCUPIED BED ── */}
       <Modal 
-        title={<Space><UserOutlined style={{ color: '#1890ff' }}/> Gestion du Lit Occupé</Space>} 
-        open={isOccupiedModalOpen} 
+        title={<Space><UserOutlined style={{ color: '#1890ff' }}/> Manage Occupied Bed</Space>}
+        open={isOccupiedModalOpen}
         onCancel={() => setIsOccupiedModalOpen(false)}
         footer={null}
       >
@@ -363,9 +363,9 @@ const HospitalisationBeds = () => {
           <div>
             <div style={{ background: '#e6f7ff', padding: 16, borderRadius: 8, marginBottom: 20, border: '1px solid #91d5ff' }}>
               <Title level={4} style={{ margin: '0 0 10px 0', color: '#0050b3' }}>{selectedBed.activeHosp.patient_name}</Title>
-              <Text strong>Emplacement : </Text> {selectedBed.room.name} - {selectedBed.bedName}<br/>
-              <Text strong>Admis le : </Text> {dayjs(selectedBed.activeHosp.admission_date).format('DD/MM/YYYY HH:mm')}<br/>
-              <Text strong>Médecin : </Text> Dr. {selectedBed.activeHosp.doctor_name}
+              <Text strong>Location: </Text> {selectedBed.room.name} - {selectedBed.bedName}<br/>
+              <Text strong>Admitted on: </Text> {dayjs(selectedBed.activeHosp.admission_date).format('DD/MM/YYYY HH:mm')}<br/>
+              <Text strong>Doctor: </Text> Dr. {selectedBed.activeHosp.doctor_name}
             </div>
 
             <Row gutter={16}>
@@ -377,7 +377,7 @@ const HospitalisationBeds = () => {
                   icon={<SwapOutlined />} 
                   onClick={() => { setIsOccupiedModalOpen(false); setIsTransferModalOpen(true); }}
                 >
-                  Transférer le patient
+                  Transfer the patient
                 </Button>
               </Col>
               <Col span={12}>
@@ -388,7 +388,7 @@ const HospitalisationBeds = () => {
                   icon={<SafetyCertificateOutlined />} 
                   onClick={handleDischarge}
                 >
-                  Libérer le lit (Sortie)
+                  Free the bed (Discharge)
                 </Button>
               </Col>
             </Row>
@@ -398,22 +398,22 @@ const HospitalisationBeds = () => {
 
       {/* ── MODAL: TRANSFER PATIENT ── */}
       <Modal 
-        title={<Space><SwapOutlined style={{ color: '#fa8c16' }}/> Transférer le Patient</Space>} 
-        open={isTransferModalOpen} 
-        onOk={() => transferForm.submit()} 
+        title={<Space><SwapOutlined style={{ color: '#fa8c16' }}/> Transfer the Patient</Space>}
+        open={isTransferModalOpen}
+        onOk={() => transferForm.submit()}
         onCancel={() => { setIsTransferModalOpen(false); transferForm.resetFields(); }}
-        okText="Valider le Transfert"
-        cancelText="Annuler"
+        okText="Confirm Transfer"
+        cancelText="Cancel"
       >
         {selectedBed?.activeHosp && (
           <>
             <div style={{ background: '#fff7e6', padding: 12, borderRadius: 8, marginBottom: 16, border: '1px solid #ffd591' }}>
-              <Text strong>Patient : </Text> {selectedBed.activeHosp.patient_name}<br/>
-              <Text strong>Origine : </Text> {selectedBed.room.name} ({selectedBed.bedName})
+              <Text strong>Patient: </Text> {selectedBed.activeHosp.patient_name}<br/>
+              <Text strong>Origin: </Text> {selectedBed.room.name} ({selectedBed.bedName})
             </div>
             <Form form={transferForm} layout="vertical" onFinish={handleTransfer}>
-              <Form.Item name="new_room" label="Nouvelle Salle de Destination" rules={[{ required: true }]}>
-                <Select placeholder="Choisir la salle cible" size="large">
+              <Form.Item name="new_room" label="New Destination Room" rules={[{ required: true }]}>
+                <Select placeholder="Choose the target room" size="large">
                   {rooms.map(r => (
                     <Option key={`trans-${r.id || r.name}`} value={`${r.department}|${r.name}`}>
                       {r.department} - {r.name}
@@ -421,8 +421,8 @@ const HospitalisationBeds = () => {
                   ))}
                 </Select>
               </Form.Item>
-              <Form.Item name="new_bed" label="Nouveau Lit" rules={[{ required: true }]}>
-                <Select placeholder="Sélectionnez d'abord une salle" size="large">
+              <Form.Item name="new_bed" label="New Bed" rules={[{ required: true }]}>
+                <Select placeholder="Select a room first" size="large">
                   {renderTransferBedOptions()}
                 </Select>
               </Form.Item>

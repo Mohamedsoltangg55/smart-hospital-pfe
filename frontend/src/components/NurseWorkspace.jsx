@@ -17,7 +17,7 @@ const NurseWorkspace = () => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const nurseName = localStorage.getItem('username') || 'Infirmier(ère)';
+  const nurseName = localStorage.getItem('username') || 'Nurse';
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -41,8 +41,8 @@ const NurseWorkspace = () => {
       
       setTasks(sortedTasks);
     } catch (error) {
-      console.error("Erreur de synchronisation:", error);
-      message.error("Impossible de charger les données du service.");
+      console.error("Sync error:", error);
+      message.error("Unable to load ward data.");
     } finally {
       setLoading(false);
     }
@@ -63,10 +63,10 @@ const NurseWorkspace = () => {
         completed_by: nurseName 
       });
       
-      message.success("Tâche marquée comme terminée !");
+      message.success("Task marked as completed!");
       fetchData(); // Refresh the lists
     } catch (error) {
-      message.error("Erreur lors de la mise à jour de la tâche.");
+      message.error("Error while updating the task.");
       console.error(error);
     }
   };
@@ -85,13 +85,13 @@ const NurseWorkspace = () => {
       <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <Title level={2} style={{ margin: 0, color: '#141414' }}>
-            <HeartOutlined style={{ color: '#eb2f96', marginRight: 12 }} /> 
-            Poste de Soins Infirmiers
+            <HeartOutlined style={{ color: '#eb2f96', marginRight: 12 }} />
+            Nursing Station
           </Title>
-          <Text type="secondary" style={{ fontSize: 15 }}>Surveillance des patients hospitalisés et exécution des prescriptions médicales.</Text>
+          <Text type="secondary" style={{ fontSize: 15 }}>Monitoring of inpatients and execution of medical prescriptions.</Text>
         </div>
         <Button icon={<SyncOutlined />} onClick={fetchData} loading={loading} size="large" style={{ borderRadius: 8 }}>
-          Actualiser
+          Refresh
         </Button>
       </div>
 
@@ -100,7 +100,7 @@ const NurseWorkspace = () => {
         <Col span={8}>
           <Card style={{ borderRadius: 12, background: '#e6f7ff', borderLeft: '5px solid #1890ff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
             <Statistic 
-              title={<Text style={{ color: '#0050b3', fontWeight: 600 }}>Patients Hospitalisés (Lits Occupés)</Text>} 
+              title={<Text style={{ color: '#0050b3', fontWeight: 600 }}>Inpatients (Occupied Beds)</Text>}
               value={hospitalizations.length} 
               prefix={<UserOutlined style={{ color: '#1890ff' }} />} 
               valueStyle={{ color: '#1890ff', fontWeight: 800, fontSize: 32 }} 
@@ -110,7 +110,7 @@ const NurseWorkspace = () => {
         <Col span={8}>
           <Card style={{ borderRadius: 12, background: '#fff1f0', borderLeft: '5px solid #ff4d4f', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
             <Statistic 
-              title={<Text style={{ color: '#a8071a', fontWeight: 600 }}>Tâches Médicales en Attente</Text>} 
+              title={<Text style={{ color: '#a8071a', fontWeight: 600 }}>Pending Medical Tasks</Text>}
               value={pendingTasks.length} 
               prefix={<AlertOutlined style={{ color: '#ff4d4f' }} />} 
               valueStyle={{ color: '#ff4d4f', fontWeight: 800, fontSize: 32 }} 
@@ -120,7 +120,7 @@ const NurseWorkspace = () => {
         <Col span={8}>
           <Card style={{ borderRadius: 12, background: '#f6ffed', borderLeft: '5px solid #52c41a', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
             <Statistic 
-              title={<Text style={{ color: '#237804', fontWeight: 600 }}>Soins Terminés (Aujourd'hui)</Text>} 
+              title={<Text style={{ color: '#237804', fontWeight: 600 }}>Completed Care (Today)</Text>}
               value={completedTasks.length} 
               prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />} 
               valueStyle={{ color: '#52c41a', fontWeight: 800, fontSize: 32 }} 
@@ -136,13 +136,13 @@ const NurseWorkspace = () => {
             title={
               <Space>
                 <UserOutlined style={{ color: '#1890ff' }} />
-                <span style={{ fontWeight: 700 }}>Cartographie des Lits Occupés</span>
+                <span style={{ fontWeight: 700 }}>Occupied Beds Map</span>
               </Space>
             } 
             style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.05)', minHeight: 500 }}
           >
             {hospitalizations.length === 0 ? (
-              <Empty description="Aucun patient actuellement hospitalisé." image={Empty.PRESENTED_IMAGE_SIMPLE} />
+              <Empty description="No patients currently hospitalized." image={Empty.PRESENTED_IMAGE_SIMPLE} />
             ) : (
               <Row gutter={[16, 16]}>
                 {hospitalizations.map(hosp => (
@@ -169,7 +169,7 @@ const NurseWorkspace = () => {
                       </div>
                       <Divider style={{ margin: '10px 0' }} />
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                        <Text type="secondary">Admis: {dayjs(hosp.admission_date).format('DD/MM HH:mm')}</Text>
+                        <Text type="secondary">Admitted: {dayjs(hosp.admission_date).format('DD/MM HH:mm')}</Text>
                         <Text strong type="secondary">Dr. {hosp.doctor_name}</Text>
                       </div>
                     </Card>
@@ -186,7 +186,7 @@ const NurseWorkspace = () => {
             title={
               <Space>
                 <MedicineBoxOutlined style={{ color: '#eb2f96' }} />
-                <span style={{ fontWeight: 700 }}>Prescriptions & Tâches à Réaliser</span>
+                <span style={{ fontWeight: 700 }}>Prescriptions & Tasks To Do</span>
               </Space>
             } 
             style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.05)', minHeight: 500 }}
@@ -195,7 +195,7 @@ const NurseWorkspace = () => {
             <List
               itemLayout="horizontal"
               dataSource={tasks}
-              locale={{ emptyText: <Empty description="Aucune tâche médicale en attente." /> }}
+              locale={{ emptyText: <Empty description="No pending medical tasks." /> }}
               renderItem={task => (
                 <List.Item 
                   style={{ 
@@ -213,10 +213,10 @@ const NurseWorkspace = () => {
                         onClick={() => handleCompleteTask(task.id)}
                         style={{ background: '#52c41a', borderColor: '#52c41a', borderRadius: 6 }}
                       >
-                        Valider
+                        Complete
                       </Button>
                     ) : (
-                      <Tag color="default" icon={<CheckCircleOutlined />}>Fait</Tag>
+                      <Tag color="default" icon={<CheckCircleOutlined />}>Done</Tag>
                     )
                   ]}
                 >

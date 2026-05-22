@@ -14,21 +14,21 @@ const { Text, Paragraph } = Typography;
 // Severity banner colours — brief section 12.
 const SEVERITY_META = {
   INFO:     { bg: '#595959', label: 'INFO' },
-  LOW:      { bg: '#1890ff', label: 'FAIBLE' },
-  MEDIUM:   { bg: '#faad14', label: 'MOYENNE' },
-  HIGH:     { bg: '#fa8c16', label: 'ÉLEVÉE' },
-  CRITICAL: { bg: '#cf1322', label: 'CRITIQUE' },
+  LOW:      { bg: '#1890ff', label: 'LOW' },
+  MEDIUM:   { bg: '#faad14', label: 'MEDIUM' },
+  HIGH:     { bg: '#fa8c16', label: 'HIGH' },
+  CRITICAL: { bg: '#cf1322', label: 'CRITICAL' },
 };
 const severityMeta = (lvl) => SEVERITY_META[(lvl || 'MEDIUM').toUpperCase()] || SEVERITY_META.MEDIUM;
 
 const LIKELIHOOD_META = {
-  LOW:    { color: 'green',  label: 'FAIBLE' },
-  MEDIUM: { color: 'orange', label: 'MOYENNE' },
-  HIGH:   { color: 'red',    label: 'ÉLEVÉE' },
+  LOW:    { color: 'green',  label: 'LOW' },
+  MEDIUM: { color: 'orange', label: 'MEDIUM' },
+  HIGH:   { color: 'red',    label: 'HIGH' },
 };
 const likMeta = (l) => LIKELIHOOD_META[(l || 'LOW').toUpperCase()] || LIKELIHOOD_META.LOW;
 
-const DISCLAIMER = "Aide à la décision générée par IA — à vérifier avant toute action.";
+const DISCLAIMER = "AI-generated decision support — verify before acting.";
 
 // --- small presentational helpers ---------------------------------------
 const Section = ({ title, children }) => (
@@ -64,14 +64,14 @@ const AlgorithmicFacts = ({ log }) => {
   return (
     <div style={{ border: '1px solid #434343', borderRadius: 8, padding: '10px 14px', background: '#1f1f1f' }}>
       <Space wrap size={8}>
-        <Text type="secondary">Détecté par l'algorithme :</Text>
+        <Text type="secondary">Detected by the algorithm:</Text>
         <StatusBadge status={log?.anomaly?.status} />
-        <Text>score : <Text strong>{score != null ? Number(score).toFixed(4) : '—'}</Text></Text>
+        <Text>score: <Text strong>{score != null ? Number(score).toFixed(4) : '—'}</Text></Text>
       </Space>
       <div style={{ marginTop: 4 }}>
         <Text type="secondary" style={{ fontSize: 11.5 }}>
-          Statut et score calculés par le moteur algorithmique (autoencodeur + règles).
-          L'IA n'a pas pris cette décision — elle ne fait que l'expliquer.
+          Status and score computed by the algorithmic engine (autoencoder + rules).
+          The AI did not make this decision — it only explains it.
         </Text>
       </div>
     </div>
@@ -97,13 +97,13 @@ const AiAnalysisModal = ({ open, log, onClose }) => {
       );
       const body = res.data || {};
       if (body.error) {
-        setError(body.error.message || 'Analyse impossible.');
+        setError(body.error.message || 'Analysis unavailable.');
         setResp(null);
       } else {
         setResp(body.data);
       }
     } catch (e) {
-      setError("L'analyse IA est indisponible (erreur réseau ou serveur).");
+      setError('AI analysis is unavailable (network or server error).');
       setResp(null);
     } finally {
       setLoading(false);
@@ -137,7 +137,7 @@ const AiAnalysisModal = ({ open, log, onClose }) => {
         }}>
           <WarningOutlined style={{ fontSize: 20 }} />
           <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: 0.5 }}>
-            Sévérité : {sev.label}
+            Severity: {sev.label}
           </span>
         </div>
 
@@ -147,55 +147,55 @@ const AiAnalysisModal = ({ open, log, onClose }) => {
         {/* Cache / fallback / mock indicators + re-analyze */}
         <Space wrap size={8}>
           {resp.cached && (
-            <Tag icon={<DatabaseOutlined />} color="default">Résultat en cache</Tag>
+            <Tag icon={<DatabaseOutlined />} color="default">Cached result</Tag>
           )}
-          {isMock && <Tag color="purple">Mode démo (analyse simulée)</Tag>}
+          {isMock && <Tag color="purple">Demo mode (simulated analysis)</Tag>}
           <Button size="small" icon={<ReloadOutlined />} loading={loading}
             onClick={() => runAnalysis(true)}>
-            Ré-analyser
+            Re-analyze
           </Button>
         </Space>
         {isFallback && (
           <Alert type="warning" showIcon
-            message="Analyse IA détaillée indisponible — rapport de repli affiché. Réessayez plus tard." />
+            message="Detailed AI analysis unavailable — fallback report shown. Try again later." />
         )}
 
         {/* Incident summary + why */}
-        <Section title="Résumé de l'incident">
+        <Section title="Incident Summary">
           <Text strong style={{ fontSize: 15 }}>{a.incident_summary}</Text>
         </Section>
-        <Section title="Pourquoi c'est suspect">
+        <Section title="Why It's Suspicious">
           <Paragraph style={{ marginBottom: 0 }}>{a.why_suspicious}</Paragraph>
         </Section>
 
         {/* Risk + response lists */}
-        <Section title="Risques de sécurité">
+        <Section title="Security Risks">
           <BulletList items={a.security_risks} />
         </Section>
 
         {/* Threat gauges */}
         <Row gutter={12}>
-          <Col span={12}><ThreatCard title="Menace interne" data={a.insider_threat} /></Col>
-          <Col span={12}><ThreatCard title="Compte compromis" data={a.compromised_account} /></Col>
+          <Col span={12}><ThreatCard title="Insider Threat" data={a.insider_threat} /></Col>
+          <Col span={12}><ThreatCard title="Compromised Account" data={a.compromised_account} /></Col>
         </Row>
 
-        <Section title="Mesures d'atténuation recommandées">
+        <Section title="Recommended Mitigations">
           <BulletList items={a.recommended_mitigations} />
         </Section>
-        <Section title="Réponse administrateur recommandée">
+        <Section title="Recommended Admin Response">
           <BulletList items={a.recommended_admin_response} />
         </Section>
 
         {/* Severity explanation + confidence + MITRE */}
-        <Section title="Évaluation de la sévérité">
+        <Section title="Severity Assessment">
           <Paragraph style={{ marginBottom: 0 }}>{a.severity?.explanation}</Paragraph>
         </Section>
         <Space wrap>
-          <Text type="secondary">Confiance de l'analyse :</Text>
+          <Text type="secondary">Analysis confidence:</Text>
           <Tag color={conf.color} style={{ fontWeight: 700 }}>{conf.label}</Tag>
         </Space>
         {Array.isArray(a.mitre_attack_refs) && a.mitre_attack_refs.length > 0 && (
-          <Section title="Références MITRE ATT&CK">
+          <Section title="MITRE ATT&CK References">
             <Space wrap>
               {a.mitre_attack_refs.map((r) => <Tag key={r} color="geekblue">{r}</Tag>)}
             </Space>
@@ -206,8 +206,8 @@ const AiAnalysisModal = ({ open, log, onClose }) => {
         <Alert type="info" showIcon message={DISCLAIMER} />
 
         <Text type="secondary" style={{ fontSize: 11 }}>
-          Modèle : {resp.model || '—'}
-          {resp.generated_at ? ` · généré le ${new Date(resp.generated_at).toLocaleString('fr-FR')}` : ''}
+          Model: {resp.model || '—'}
+          {resp.generated_at ? ` · generated on ${new Date(resp.generated_at).toLocaleString('en-US')}` : ''}
         </Text>
       </Space>
     );
@@ -215,12 +215,12 @@ const AiAnalysisModal = ({ open, log, onClose }) => {
 
   const renderError = () => (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      <Alert type="error" showIcon message="Analyse IA indisponible" description={error} />
+      <Alert type="error" showIcon message="AI Analysis Unavailable" description={error} />
       {/* The algorithmic facts still render even when the LLM is unreachable. */}
       <AlgorithmicFacts log={log} />
       <Button type="primary" icon={<ReloadOutlined />} loading={loading}
         onClick={() => runAnalysis(false)}>
-        Réessayer
+        Retry
       </Button>
       <Alert type="info" showIcon message={DISCLAIMER} />
     </Space>
@@ -237,7 +237,7 @@ const AiAnalysisModal = ({ open, log, onClose }) => {
         title={
           <Space>
             <RobotOutlined style={{ color: '#fa8c16' }} />
-            <span>Analyse IA Sécurité — Événement #{logId ?? '—'}</span>
+            <span>AI Security Analysis — Event #{logId ?? '—'}</span>
           </Space>
         }
       >
