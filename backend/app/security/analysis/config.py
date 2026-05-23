@@ -34,3 +34,10 @@ MOCK_LLM = _flag("MOCK_LLM", "false")
 # --- Privacy ---
 # Redact obvious direct identifiers (e.g. NSS numbers) before sending to the LLM.
 REDACT_PII = _flag("REDACT_PII", "true")
+
+# --- Rate limiting (analyze endpoint) ---
+# Per-user cap on AI analysis requests, sized to protect the Groq free-tier
+# quota. A user may run at most ANALYZE_RATE_MAX analyses within any rolling
+# ANALYZE_RATE_WINDOW_SECONDS window; further requests get a clean 429.
+ANALYZE_RATE_MAX = int(os.getenv("ANALYZE_RATE_MAX", "10"))
+ANALYZE_RATE_WINDOW_SECONDS = int(os.getenv("ANALYZE_RATE_WINDOW_SECONDS", "60"))

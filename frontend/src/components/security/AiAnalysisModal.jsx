@@ -103,7 +103,11 @@ const AiAnalysisModal = ({ open, log, onClose }) => {
         setResp(body.data);
       }
     } catch (e) {
-      setError('AI analysis is unavailable (network or server error).');
+      // Surface a structured { data, error } envelope from the backend if
+      // present (e.g. 429 RATE_LIMITED, 404, 500) so the modal shows the
+      // real reason instead of a generic network message.
+      const apiMsg = e?.response?.data?.error?.message;
+      setError(apiMsg || 'AI analysis is unavailable (network or server error).');
       setResp(null);
     } finally {
       setLoading(false);

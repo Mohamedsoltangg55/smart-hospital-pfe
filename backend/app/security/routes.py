@@ -14,6 +14,9 @@ endpoint + LLM live in the `analysis` package (Phase 3).
 from __future__ import annotations
 
 import json
+import threading
+import time
+from collections import defaultdict, deque
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -24,6 +27,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from .. import models
+from .analysis import config as analysis_config
 from .analysis.service import analyze_log, get_cached_analysis, is_flagged
 from .detection.roles import role_of
 from .schemas import (
@@ -213,16 +217,42 @@ def _error_response(status_code: int, code: str, message: str) -> JSONResponse:
     )
 
 
+# In-memory per-user sliding-window rate limiter for the analyze endpoint.
+# Keyed by username; protects the Groq free-tier quota. Limits are
+# config-driven (analysis.config.ANALYZE_RATE_*). Process-local: fine for a
+# single-worker deployment; a multi-worker setup would move this to Redis.
+_rate_lock = threading.Lock()
+_rate_hits: dict[str, deque] = defaultdict(deque)
+
+
+def _check_analyze_rate_limit(username: str) -> tuple[bool, int]:
+    """Return (allowed, retry_after_seconds) for a user's analyze request."""
+    window = analysis_config.ANALYZE_RATE_WINDOW_SECONDS
+    limit = analysis_config.ANALYZE_RATE_MAX
+    now = time.monotonic()
+    with _rate_lock:
+        hits = _rate_hits[username]
+        while hits and now - hits[0] >= window:
+            hits.popleft()
+        if len(hits) >= limit:
+            return False, int(window - (now - hits[0])) + 1
+        hits.append(now)
+        return True, 0
+
+
 @router.post("/logs/{log_id}/analyze")
 async def analyze_log_endpoint(
     log_id: int,
     request: Request,
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_security_role),
 ):
     """Request an LLM contextual analysis for one flagged audit log.
 
-    Body (optional): { "force_refresh": bool, "requested_by": str }.
-    Logs the algorithmic layer did NOT flag are rejected with a clear message.
+    Body (optional): { "force_refresh": bool }. The requester identity is
+    taken from the authenticated JWT, never from the body. Logs the
+    algorithmic layer did NOT flag are rejected with a clear message, and
+    the endpoint is rate-limited per user to protect the LLM provider quota.
     """
     log = db.query(models.AuditLog).filter(models.AuditLog.id == log_id).first()
     if not log:
@@ -232,6 +262,18 @@ async def analyze_log_endpoint(
             400, "LOG_NOT_FLAGGED",
             "Only SUSPICIOUS or CRITICAL logs can be analyzed; this log is NORMAL.",
         )
+
+    # Per-user rate limit -- protects the Groq free-tier quota.
+    allowed, retry_after = _check_analyze_rate_limit(current_user.username)
+    if not allowed:
+        return _error_response(
+            429, "RATE_LIMITED",
+            f"Analysis rate limit reached "
+            f"({analysis_config.ANALYZE_RATE_MAX} per "
+            f"{analysis_config.ANALYZE_RATE_WINDOW_SECONDS}s). "
+            f"Please try again in {retry_after}s.",
+        )
+
     # Tolerant body parsing: a missing or non-JSON body is treated as {}.
     try:
         body = await request.json()
@@ -240,7 +282,9 @@ async def analyze_log_endpoint(
     except Exception:
         body = {}
     force_refresh = bool(body.get("force_refresh", False))
-    requested_by = str(body.get("requested_by") or "security-console")
+    # The requester is the authenticated user -- never trust a body-supplied
+    # name. This username lands in the AI_ANALYSIS_REQUESTED audit entry.
+    requested_by = current_user.username
     try:
         payload = analyze_log(db, log, requested_by=requested_by, force_refresh=force_refresh)
         return {"data": payload, "error": None}
