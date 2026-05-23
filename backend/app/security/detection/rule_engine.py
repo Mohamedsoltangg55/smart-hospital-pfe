@@ -41,8 +41,12 @@ class RuleContext:
 # --- Individual rules: each returns (status, rule_name) when it fires --------
 
 def _rule_security_violation(ctx: RuleContext):
+    # The SECURITY_VIOLATION action is, by name, an explicit policy breach
+    # (e.g. unauthorized folder access blocked by the API layer). Emitting
+    # CRITICAL keeps the 5-level severity ladder consistent: with this rule
+    # firing, _severity_level() will map the event to CRITICAL severity.
     if ctx.action == "SECURITY_VIOLATION":
-        return config.STATUS_SUSPICIOUS, "SECURITY_VIOLATION"
+        return config.STATUS_CRITICAL, "SECURITY_VIOLATION"
     return None
 
 

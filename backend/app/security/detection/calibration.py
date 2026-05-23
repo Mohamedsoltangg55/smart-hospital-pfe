@@ -31,17 +31,29 @@ from app.security.detection import config
 
 # Actions excluded from the "benign" calibration set (known-bad).
 EXCLUDED_ACTIONS = {"SECURITY_VIOLATION"}
+# Demo-seed rows (see app.security.demo_seed) are crafted attacks and
+# false-positives -- they must never feed the benign anchor distribution.
+DEMO_TAG = "[DEMO]"
 
 
 def recompute_anchors() -> dict:
     """Recompute normalization anchors from real benign audit logs and persist
-    them to config.REAL_ANCHORS_PATH. Returns the written payload."""
+    them to config.REAL_ANCHORS_PATH. Returns the written payload.
+
+    "Benign" = NORMAL rows only, excluding SECURITY_VIOLATION and any rows
+    tagged as demo seed data. This prevents flagged/attack rows from
+    pulling the percentile anchors upward and weakening detection.
+    """
     db = SessionLocal()
     try:
         scores = []
         for row in db.query(models.AuditLog).all():
             if (row.action or "").upper() in EXCLUDED_ACTIONS:
                 continue
+            if (row.severity or "NORMAL").upper() != "NORMAL":
+                continue  # only NORMAL rows feed the benign distribution
+            if DEMO_TAG in (row.details or ""):
+                continue  # crafted demo rows are never benign
             if not row.anomaly_score:
                 continue
             try:
@@ -72,6 +84,7 @@ def recompute_anchors() -> dict:
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "n_samples": len(scores),
         "excluded_actions": sorted(EXCLUDED_ACTIONS),
+        "excluded_flagged_or_demo": True,
         "note": ("Interim anchors recomputed from real benign traffic. The "
                  "autoencoder is trained on synthetic data; replace these by "
                  "retraining the model once enough real logs exist."),

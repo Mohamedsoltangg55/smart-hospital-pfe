@@ -10,6 +10,20 @@ from __future__ import annotations
 from typing import List, Tuple
 
 
+_BENIGN_CONTEXT_PHRASES = ("on-call", "on call", "emergency", "patient consent")
+
+
+def _is_benign_context(ctx: dict) -> bool:
+    """Detect an explicit benign-context marker in the event details.
+
+    The real LLM does this reasoning natively; the offline mock relies on
+    this heuristic so the demo's "benign false-positive" scenario reads
+    differently from the genuine-attack ones.
+    """
+    text = (ctx.get("event_details") or "").lower()
+    return any(p in text for p in _BENIGN_CONTEXT_PHRASES)
+
+
 def _likelihoods(action: str, features: List[str]) -> Tuple[str, str]:
     """Heuristic insider-threat / compromised-account likelihoods."""
     a = (action or "").upper()
@@ -19,11 +33,80 @@ def _likelihoods(action: str, features: List[str]) -> Tuple[str, str]:
         insider = "MEDIUM"
     if a == "FOLDER_ACCESSED" or "ROLE_RESOURCE_MISMATCH" in feat:
         insider = "MEDIUM"
-    if "OFF_HOURS_LOGIN" in feat or a == "USER_LOGIN":
+    # An OFF_HOURS_LOGIN by name implicates the credentials directly; rank
+    # it higher than a plain USER_LOGIN signal.
+    if "OFF_HOURS_LOGIN" in feat:
+        compromised = "HIGH"
+    elif a == "USER_LOGIN":
         compromised = "MEDIUM"
     if "REPEATED_ACTIONS_BURST" in feat:
         insider = "HIGH"
     return insider, compromised
+
+
+def _build_benign_report(ctx: dict, action: str, role: str, username: str,
+                        status: str, severity: str, fired: str,
+                        valid_levels: tuple) -> dict:
+    """A softer mock report used when the event details indicate a legitimate
+    context (on-call shift, emergency, documented consent)."""
+    return {
+        "incident_summary": (
+            f"{action} by '{username}' ({role}) was flagged by the algorithm, "
+            "but the event context indicates a legitimate care scenario."
+        ),
+        "why_suspicious": (
+            f"The detector raised this event on: {fired}. However, the event "
+            "details explicitly mention an on-call / emergency context, which "
+            "the contextual layer treats as a strong benign indicator."
+        ),
+        "security_risks": [
+            "Likely-benign context detected (on-call shift / emergency callout / consented access).",
+            "Manual confirmation still recommended for hospital governance.",
+        ],
+        "insider_threat": {
+            "likelihood": "LOW",
+            "reasoning": (
+                "The event details cite an on-call / emergency duty; the "
+                "action has a plausible clinical justification consistent "
+                "with that workflow."
+            ),
+        },
+        "compromised_account": {
+            "likelihood": "LOW",
+            "reasoning": (
+                "No off-hours/unusual-source credential indicators in this "
+                "event beyond the documented on-call context."
+            ),
+        },
+        "recommended_mitigations": [
+            f"Confirm the on-call assignment for the {role} on this date.",
+            "No immediate response required; archive once reviewed.",
+        ],
+        "recommended_admin_response": [
+            "No escalation required -- annotate the event as benign in the audit log.",
+            "If recurring spurious flags, retrain the autoencoder with on-call examples.",
+        ],
+        "severity": {
+            # The algorithmic layer's status is preserved as a read-only fact
+            # in the modal's "algorithmic facts" panel; here the analysis
+            # severity is intentionally downgraded to LOW to reflect the
+            # contextual conclusion. This is what "the LLM contextualizes
+            # rather than rubber-stamps the algorithm" looks like.
+            "level": "LOW",
+            "explanation": (
+                f"The algorithmic layer flagged this event at {status}; the "
+                "contextual review downgrades the analysis severity to LOW "
+                "because the event details are consistent with documented "
+                "on-call / emergency duty."
+            ),
+        },
+        "confidence": "HIGH",
+        "mitre_attack_refs": [],
+        "disclaimer": (
+            "AI-generated decision support; not a substitute for human review. "
+            "(Offline mock analysis - MOCK_LLM mode. Contextual likely-benign read.)"
+        ),
+    }
 
 
 def build_mock_analysis(ctx: dict) -> dict:
@@ -40,6 +123,12 @@ def build_mock_analysis(ctx: dict) -> dict:
     fired = ", ".join(features) if features else "anomalous reconstruction error"
 
     valid_levels = ("INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL")
+
+    if _is_benign_context(ctx):
+        return _build_benign_report(
+            ctx, action, role, username, status, severity, fired, valid_levels,
+        )
+
     return {
         "incident_summary": (
             f"Operator '{username}' ({role}) performed {action}; the detection "
