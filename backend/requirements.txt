@@ -19,5 +19,9 @@ pandas>=2.0.0
 scikit-learn>=1.3.0
 joblib>=1.3.0
 
+# Offline model-comparison study (ai_security_module.evaluation).
+# Not used by the live request path -- only by the cross-validation script.
+matplotlib>=3.7.0
+
 # AI Analysis layer (LLM contextual analysis via Groq / Llama 3)
 groq>=0.11.0

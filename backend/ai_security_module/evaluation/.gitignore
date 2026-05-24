@@ -1,0 +1,6 @@
+# The labelled dataset is regenerated deterministically from seed=42 by
+# `python -m ai_security_module.evaluation.generate_dataset`. Skip it
+# from git so the commit stays small; the results/ artifacts (CSV / PNG /
+# Markdown) are kept under version control so reviewers can read the
+# study without re-running the harness.
+data/
