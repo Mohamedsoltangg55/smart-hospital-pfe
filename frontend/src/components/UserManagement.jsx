@@ -34,7 +34,7 @@ const StaffManagement = () => {
         } catch (e) { setServices([]); }
       }
     } catch (error) {
-      message.error("Erreur de connexion au serveur.");
+      message.error("Server connection error.");
     } finally {
       setLoading(false);
     }
@@ -74,31 +74,31 @@ const StaffManagement = () => {
 
       if (editingUser) {
         await client.patch(`/users/${editingUser.id}`, payload);
-        message.success("Profil mis à jour avec succès !");
+        message.success("Profile updated successfully!");
       } else {
         await client.post('/users/', payload);
-        message.success("Nouveau membre ajouté avec succès !");
+        message.success("New member added successfully!");
       }
-      
+
       setIsModalOpen(false);
-      fetchData(); 
-    } catch (error) { 
-      message.error(error.response?.data?.detail || "Erreur lors de la sauvegarde.");
+      fetchData();
+    } catch (error) {
+      message.error(error.response?.data?.detail || "Error while saving.");
     }
   };
 
   const handleDelete = async (id) => {
     try {
       await client.delete(`/users/${id}`);
-      message.success("Compte supprimé.");
+      message.success("Account deleted.");
       fetchData();
-    } catch (error) { message.error("La suppression nécessite une route DELETE."); }
+    } catch (error) { message.error("Deletion requires a DELETE route."); }
   };
 
   const columns = [
-    { 
-      title: 'Identité', 
-      key: 'identity', 
+    {
+      title: 'Identity',
+      key: 'identity',
       render: (_, record) => (
         <Space>
           <Avatar style={{ backgroundColor: record.role === 'admin' ? '#cf1322' : record.role === 'reception' ? '#52c41a' : '#1890ff' }} icon={<UserOutlined />} />
@@ -109,29 +109,29 @@ const StaffManagement = () => {
         </Space>
       ) 
     },
-    { 
-      title: 'Date de Naissance', 
-      dataIndex: 'date_of_birth', 
-      key: 'date_of_birth', 
-      render: text => text ? <Tag icon={<CalendarOutlined />}>{dayjs(text).format('DD/MM/YYYY')}</Tag> : <Text type="secondary">-</Text> 
+    {
+      title: 'Date of Birth',
+      dataIndex: 'date_of_birth',
+      key: 'date_of_birth',
+      render: text => text ? <Tag icon={<CalendarOutlined />}>{dayjs(text).format('DD/MM/YYYY')}</Tag> : <Text type="secondary">-</Text>
     },
-    { 
-      title: 'Pôle Assigné', 
-      dataIndex: 'specialty', 
-      key: 'specialty', 
-      render: text => <Tag color="purple" style={{ fontSize: '13px' }}>{text || 'Non assigné'}</Tag> 
+    {
+      title: 'Assigned Department',
+      dataIndex: 'specialty',
+      key: 'specialty',
+      render: text => <Tag color="purple" style={{ fontSize: '13px' }}>{text || 'Unassigned'}</Tag>
     },
-    { 
-      title: 'Rôle', 
-      dataIndex: 'role', 
-      key: 'role', 
+    {
+      title: 'Role',
+      dataIndex: 'role',
+      key: 'role',
       render: role => {
         if (role === 'admin') return <Tag color="red" icon={<SafetyCertificateOutlined />}>Admin</Tag>;
-        if (role === 'doctor') return <Tag color="blue" icon={<TeamOutlined />}>Médecin</Tag>;
-        if (role === 'nurse') return <Tag color="cyan" icon={<TeamOutlined />}>Infirmier</Tag>;
-        if (role === 'reception') return <Tag color="green" icon={<DesktopOutlined />}>Réception</Tag>;
+        if (role === 'doctor') return <Tag color="blue" icon={<TeamOutlined />}>Doctor</Tag>;
+        if (role === 'nurse') return <Tag color="cyan" icon={<TeamOutlined />}>Nurse</Tag>;
+        if (role === 'reception') return <Tag color="green" icon={<DesktopOutlined />}>Reception</Tag>;
         return <Tag>{role}</Tag>;
-      } 
+      }
     },
     { 
       title: 'Actions', 
@@ -139,8 +139,8 @@ const StaffManagement = () => {
       align: 'center', 
       render: (_, record) => (
         <Space size="middle">
-          <Button type="primary" ghost icon={<EditOutlined />} onClick={() => openEditModal(record)}>Gérer</Button>
-          <Popconfirm title="Supprimer ce compte ?" onConfirm={() => handleDelete(record.id)} okText="Oui" cancelText="Non">
+          <Button type="primary" ghost icon={<EditOutlined />} onClick={() => openEditModal(record)}>Manage</Button>
+          <Popconfirm title="Delete this account?" onConfirm={() => handleDelete(record.id)} okText="Yes" cancelText="No">
             <Button danger type="text" icon={<DeleteOutlined />} />
           </Popconfirm>
         </Space>
@@ -152,10 +152,10 @@ const StaffManagement = () => {
     <div style={{ padding: '30px', backgroundColor: '#F3F4F6', minHeight: '100vh', animation: 'fadeIn 0.5s' }}>
       <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <Title level={2} style={{ margin: 0, color: '#111827', fontWeight: 700 }}><TeamOutlined style={{ color: '#4F46E5', marginRight: '10px' }} /> Gestion du Personnel</Title>
-          <Text style={{ color: '#6B7280', fontSize: '15px' }}>Gérez les accès, les profils complets et les départements du staff.</Text>
+          <Title level={2} style={{ margin: 0, color: '#111827', fontWeight: 700 }}><TeamOutlined style={{ color: '#4F46E5', marginRight: '10px' }} /> Staff Management</Title>
+          <Text style={{ color: '#6B7280', fontSize: '15px' }}>Manage access, full profiles and staff departments.</Text>
         </div>
-        <Button type="primary" size="large" icon={<UserAddOutlined />} onClick={openNewModal} style={{ backgroundColor: '#4F46E5', borderRadius: '8px' }}>Nouveau Membre</Button>
+        <Button type="primary" size="large" icon={<UserAddOutlined />} onClick={openNewModal} style={{ backgroundColor: '#4F46E5', borderRadius: '8px' }}>New Member</Button>
       </div>
 
       <Card style={{ borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: 'none' }}>
@@ -163,54 +163,54 @@ const StaffManagement = () => {
       </Card>
 
       <Modal 
-        title={editingUser ? <><EditOutlined style={{ color: '#1890ff' }} /> Gérer le Profil : {editingUser.username}</> : "Créer un nouveau compte"} 
-        open={isModalOpen} 
-        onCancel={() => setIsModalOpen(false)} 
-        onOk={() => form.submit()} 
-        okText="Sauvegarder les modifications" 
-        cancelText="Annuler"
+        title={editingUser ? <><EditOutlined style={{ color: '#1890ff' }} /> Manage Profile: {editingUser.username}</> : "Create a new account"}
+        open={isModalOpen}
+        onCancel={() => setIsModalOpen(false)}
+        onOk={() => form.submit()}
+        okText="Save changes"
+        cancelText="Cancel"
         width={700}
       >
         <Form form={form} layout="vertical" onFinish={handleSave} style={{ marginTop: '20px' }}>
-          
-          <Divider orientation="left">Identité & Accès</Divider>
+
+          <Divider orientation="left">Identity & Access</Divider>
           <Row gutter={16}>
-            <Col span={12}><Form.Item name="full_name" label="Nom Complet" rules={[{ required: true }]}><Input placeholder="Ex: Dr. Amina Youssef" /></Form.Item></Col>
-            <Col span={12}><Form.Item name="username" label="Nom d'utilisateur (Login)" rules={[{ required: true }]}><Input placeholder="Ex: dr.amina" autoComplete="off" /></Form.Item></Col>
+            <Col span={12}><Form.Item name="full_name" label="Full Name" rules={[{ required: true }]}><Input placeholder="e.g. Dr. Amina Youssef" /></Form.Item></Col>
+            <Col span={12}><Form.Item name="username" label="Username (Login)" rules={[{ required: true }]}><Input placeholder="e.g. dr.amina" autoComplete="off" /></Form.Item></Col>
           </Row>
 
           <Row gutter={16}>
-            <Col span={12}><Form.Item name="date_of_birth" label="Date de Naissance"><DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Sélectionner une date" /></Form.Item></Col>
+            <Col span={12}><Form.Item name="date_of_birth" label="Date of Birth"><DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Select a date" /></Form.Item></Col>
             <Col span={12}>
-              <Form.Item name="password" label={editingUser ? "Nouveau mot de passe" : "Mot de passe"} rules={[{ required: !editingUser, message: "Requis pour un nouveau compte" }]} extra={editingUser ? "Laissez vide pour conserver l'ancien mot de passe" : ""}>
-                <Input.Password autoComplete="new-password" placeholder={editingUser ? "Modifier le mot de passe..." : "Créer un mot de passe"} />
+              <Form.Item name="password" label={editingUser ? "New password" : "Password"} rules={[{ required: !editingUser, message: "Required for a new account" }]} extra={editingUser ? "Leave blank to keep the current password" : ""}>
+                <Input.Password autoComplete="new-password" placeholder={editingUser ? "Change the password..." : "Create a password"} />
               </Form.Item>
             </Col>
           </Row>
 
-          <Divider orientation="left">Affectation Médicale</Divider>
+          <Divider orientation="left">Medical Assignment</Divider>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="role" label="Rôle d'Accès" rules={[{ required: true }]}>
+              <Form.Item name="role" label="Access Role" rules={[{ required: true }]}>
                 <Select>
-                  <Option value="doctor">Médecin</Option>
-                  <Option value="nurse">Infirmier</Option>
-                  <Option value="reception">Réceptionniste / Triage</Option>
-                  <Option value="admin">Administrateur</Option>
-                  <Option value="lab_tech">Technicien de Laboratoire</Option>
+                  <Option value="doctor">Doctor</Option>
+                  <Option value="nurse">Nurse</Option>
+                  <Option value="reception">Receptionist / Triage</Option>
+                  <Option value="admin">Administrator</Option>
+                  <Option value="lab_tech">Lab Technician</Option>
                 </Select>
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="specialty" label="Département Assigné (Pôle)">
-                <Select placeholder="Choisir un pôle" allowClear>
+              <Form.Item name="specialty" label="Assigned Department">
+                <Select placeholder="Select a department" allowClear>
                   {services.map(s => <Option key={s.id || s.name} value={s.name}>{s.name}</Option>)}
                 </Select>
               </Form.Item>
             </Col>
           </Row>
-          
-          <Row gutter={16}><Col span={12}><Form.Item name="phone" label="Numéro de Téléphone"><Input placeholder="05..." /></Form.Item></Col></Row>
+
+          <Row gutter={16}><Col span={12}><Form.Item name="phone" label="Phone Number"><Input placeholder="05..." /></Form.Item></Col></Row>
         </Form>
       </Modal>
     </div>

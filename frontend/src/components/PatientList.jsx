@@ -31,7 +31,7 @@ const PatientList = () => {
       const res = await client.get(`/patients/?t=${new Date().getTime()}`);
       setPatients(res.data.sort((a, b) => b.id - a.id));
     } catch (error) {
-      message.error("Impossible de charger l'annuaire des patients.");
+      message.error("Unable to load the patient directory.");
     } finally {
       setLoading(false);
     }
@@ -69,9 +69,9 @@ const PatientList = () => {
       
     } catch (error) {
       if (error.response && error.response.status === 403) {
-        message.error("Accès refusé : Confidentialité médicale.");
+        message.error("Access denied: Medical confidentiality.");
       } else {
-        message.warning("Dossier partiellement chargé.");
+        message.warning("Folder partially loaded.");
       }
     } finally {
       setFolderLoading(false);
@@ -86,25 +86,25 @@ const PatientList = () => {
         <Space><IdcardOutlined style={{ color: '#1890ff' }} /><Text strong>{nss || `PT-000${record.id}`}</Text></Space>
       )
     },
-    { title: 'Nom Complet', render: (_, record) => <Text strong style={{ fontSize: 15 }}>{record.first_name} {record.last_name}</Text> },
-    { 
-      title: 'Date de Naissance', 
-      dataIndex: 'date_of_birth', 
+    { title: 'Full Name', render: (_, record) => <Text strong style={{ fontSize: 15 }}>{record.first_name} {record.last_name}</Text> },
+    {
+      title: 'Date of Birth',
+      dataIndex: 'date_of_birth',
       render: (dob) => (
         <Tag color="purple">
           {dob ? dayjs(dob).format('DD/MM/YYYY') : 'N/A'}
         </Tag>
-      ) 
+      )
     },
-    { title: 'Sexe', dataIndex: 'gender', render: (gender) => <Tag color={gender === 'Male' || gender === 'M' ? 'blue' : 'magenta'}>{gender}</Tag> },
+    { title: 'Gender', dataIndex: 'gender', render: (gender) => <Tag color={gender === 'Male' || gender === 'M' ? 'blue' : 'magenta'}>{gender}</Tag> },
     { title: 'Wilaya', dataIndex: 'wilaya', render: (wilaya) => <Tag color="cyan">Code: {wilaya || 'N/A'}</Tag> },
-    { title: 'Téléphone', dataIndex: 'phone' },
+    { title: 'Phone', dataIndex: 'phone' },
     {
       title: 'Action',
       align: 'center',
       render: (_, record) => (
         <Button type="primary" icon={<FolderOpenOutlined />} onClick={() => openMedicalFolder(record)} style={{ borderRadius: 6, fontWeight: 600 }}>
-          Dossier
+          Folder
         </Button>
       )
     }
@@ -113,7 +113,7 @@ const PatientList = () => {
   // --- DRAWER TABS CONTENT ---
 
   const renderConsultations = () => {
-    if (historyData.length === 0) return <Empty description="Aucune consultation enregistrée." style={{ margin: '40px 0' }} />;
+    if (historyData.length === 0) return <Empty description="No consultations recorded." style={{ margin: '40px 0' }} />;
     return (
       <Timeline mode="left" style={{ marginTop: '20px' }}>
         {historyData.map((record, index) => (
@@ -124,18 +124,18 @@ const PatientList = () => {
           >
             <Card size="small" style={{ backgroundColor: '#f0f5ff', border: '1px solid #adc6ff', borderRadius: '8px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <Tag color="blue" icon={<MedicineBoxOutlined />}>Dr. {record.doctor_name ? record.doctor_name.toUpperCase() : 'Inconnu'}</Tag>
+                <Tag color="blue" icon={<MedicineBoxOutlined />}>Dr. {record.doctor_name ? record.doctor_name.toUpperCase() : 'Unknown'}</Tag>
                 <Tag color="cyan">{record.doctor_specialty || record.service || 'Consultation'}</Tag>
               </div>
               <Divider style={{ margin: '8px 0' }} />
               <div style={{ marginBottom: '8px' }}>
-                <Text type="secondary">Diagnostic Confirmé :</Text><br/>
-                <Text strong style={{ fontSize: '15px' }}>{record.diagnosis || 'Non spécifié'}</Text>
+                <Text type="secondary">Confirmed Diagnosis:</Text><br/>
+                <Text strong style={{ fontSize: '15px' }}>{record.diagnosis || 'Not specified'}</Text>
               </div>
               <div>
-                <Text type="secondary">Prescription :</Text><br/>
+                <Text type="secondary">Prescription:</Text><br/>
                 <div style={{ backgroundColor: '#ffffff', padding: '10px', borderRadius: '6px', borderLeft: '3px solid #52c41a', marginTop: '4px', whiteSpace: 'pre-wrap' }}>
-                  {record.treatment || 'Aucun traitement enregistré'}
+                  {record.treatment || 'No treatment recorded'}
                 </div>
               </div>
             </Card>
@@ -146,7 +146,7 @@ const PatientList = () => {
   };
 
   const renderLabResults = () => {
-    if (labResults.length === 0) return <Empty description="Aucun bilan biologique trouvé." style={{ margin: '40px 0' }} />;
+    if (labResults.length === 0) return <Empty description="No lab results found." style={{ margin: '40px 0' }} />;
     
     return (
       <div style={{ marginTop: 20 }}>
@@ -165,26 +165,26 @@ const PatientList = () => {
               style={{ marginBottom: 16, borderRadius: 8, border: '1px solid #d3adf7' }}
               headStyle={{ background: '#f9f0ff' }}
             >
-              <Text type="secondary" style={{ fontSize: 12 }}>Validé par: {order.lab_tech_name || 'Laboratoire'}</Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>Validated by: {order.lab_tech_name || 'Laboratory'}</Text>
               <Divider style={{ margin: '8px 0' }} />
-              <Table 
+              <Table
                 dataSource={results}
                 rowKey="parameter"
                 pagination={false}
                 size="small"
                 columns={[
-                  { title: 'Paramètre', dataIndex: 'parameter', key: 'parameter' },
-                  { title: 'Résultat', dataIndex: 'value', key: 'value', render: (val, r) => (
+                  { title: 'Parameter', dataIndex: 'parameter', key: 'parameter' },
+                  { title: 'Result', dataIndex: 'value', key: 'value', render: (val, r) => (
                       <Text strong style={{ color: r.flag === 'H' || r.flag === '!' ? '#cf1322' : r.flag === 'L' ? '#1890ff' : '#000' }}>
                         {val}
                       </Text>
                   )},
-                  { title: 'Unité', dataIndex: 'unit', key: 'unit' },
-                  { title: 'Réf.', key: 'ref', render: (_, r) => <Text type="secondary" style={{ fontSize: 11 }}>{r.ref_min} - {r.ref_max}</Text> },
-                  { title: 'Indicateur', dataIndex: 'flag', key: 'flag', render: f => {
-                      if (f === 'H') return <Tag color="red">↑ Élevé</Tag>;
-                      if (f === 'L') return <Tag color="blue">↓ Bas</Tag>;
-                      if (f === '!') return <Tag color="magenta">⚠ CRITIQUE</Tag>;
+                  { title: 'Unit', dataIndex: 'unit', key: 'unit' },
+                  { title: 'Ref.', key: 'ref', render: (_, r) => <Text type="secondary" style={{ fontSize: 11 }}>{r.ref_min} - {r.ref_max}</Text> },
+                  { title: 'Indicator', dataIndex: 'flag', key: 'flag', render: f => {
+                      if (f === 'H') return <Tag color="red">↑ High</Tag>;
+                      if (f === 'L') return <Tag color="blue">↓ Low</Tag>;
+                      if (f === '!') return <Tag color="magenta">⚠ CRITICAL</Tag>;
                       return <Tag color="green">Normal</Tag>;
                   }}
                 ]}
@@ -197,7 +197,7 @@ const PatientList = () => {
   };
 
   const renderHospitalizations = () => {
-    if (hospitalizationData.length === 0) return <Empty description="Aucun historique d'hospitalisation." style={{ margin: '40px 0' }} />;
+    if (hospitalizationData.length === 0) return <Empty description="No hospitalization history." style={{ margin: '40px 0' }} />;
     return (
       <Timeline mode="left" style={{ marginTop: '20px' }}>
         {hospitalizationData.map((hosp, index) => {
@@ -209,10 +209,10 @@ const PatientList = () => {
             const days = end.diff(start, 'day');
             const hours = end.diff(start, 'hour') % 24;
             let displayDur = [];
-            if (days > 0) displayDur.push(`${days} jour(s)`);
-            if (hours > 0) displayDur.push(`${hours} heure(s)`);
-            if (displayDur.length === 0) displayDur.push('moins d\'une heure');
-            durationText = ` - Durée : ${displayDur.join(' et ')}`;
+            if (days > 0) displayDur.push(`${days} day(s)`);
+            if (hours > 0) displayDur.push(`${hours} hour(s)`);
+            if (displayDur.length === 0) displayDur.push('less than an hour');
+            durationText = ` - Duration: ${displayDur.join(' and ')}`;
           }
 
           return (
@@ -228,15 +228,15 @@ const PatientList = () => {
                 </Text>
                 {isDischarged ? (
                   <Tag color="default" style={{ margin: 0, whiteSpace: 'normal', height: 'auto', padding: '4px 8px' }}>
-                    Sortie le {hosp.discharge_date ? dayjs(hosp.discharge_date).format('DD/MM/YYYY HH:mm') : '—'}
+                    Discharged on {hosp.discharge_date ? dayjs(hosp.discharge_date).format('DD/MM/YYYY HH:mm') : '—'}
                     <span style={{ fontWeight: 'bold', marginLeft: 8 }}>{durationText}</span>
                   </Tag>
                 ) : (
-                  <Badge status="processing" text={<Text type="success" strong>Actuellement Hospitalisé</Text>} />
+                  <Badge status="processing" text={<Text type="success" strong>Currently Hospitalized</Text>} />
                 )}
               </div>
               <Divider style={{ margin: '8px 0' }} />
-              <Text type="secondary">Médecin Responsable : Dr. {hosp.doctor_name}</Text>
+              <Text type="secondary">Attending Doctor: Dr. {hosp.doctor_name}</Text>
             </Card>
           </Timeline.Item>
         )})}
@@ -246,16 +246,16 @@ const PatientList = () => {
 
   const drawerTabItems = [
     { key: "1", label: <span><MedicineBoxOutlined /> Consultations</span>, children: renderConsultations() },
-    { key: "2", label: <span><ExperimentOutlined /> Bilans Bio</span>, children: renderLabResults() },
-    { key: "3", label: <span><AppstoreOutlined /> Hospitalisations</span>, children: renderHospitalizations() }
+    { key: "2", label: <span><ExperimentOutlined /> Lab Results</span>, children: renderLabResults() },
+    { key: "3", label: <span><AppstoreOutlined /> Hospitalizations</span>, children: renderHospitalizations() }
   ];
 
   return (
     <div style={{ animation: 'fadeIn 0.5s' }}>
-      <Card title={<Space><TeamOutlined style={{ fontSize: '28px', color: '#1890ff' }} /><Title level={3} style={{ margin: 0 }}>Annuaire des Patients</Title></Space>} extra={<Button icon={<ReloadOutlined />} onClick={fetchPatients} loading={loading}>Actualiser</Button>}>
+      <Card title={<Space><TeamOutlined style={{ fontSize: '28px', color: '#1890ff' }} /><Title level={3} style={{ margin: 0 }}>Patient Directory</Title></Space>} extra={<Button icon={<ReloadOutlined />} onClick={fetchPatients} loading={loading}>Refresh</Button>}>
         <Row style={{ marginBottom: '20px' }}>
           <Col span={24}>
-            <Input size="large" placeholder="Rechercher par Nom ou NSS..." prefix={<SearchOutlined />} value={searchText} onChange={(e) => setSearchText(e.target.value)} allowClear style={{ borderRadius: 8 }} />
+            <Input size="large" placeholder="Search by Name or NSS..." prefix={<SearchOutlined />} value={searchText} onChange={(e) => setSearchText(e.target.value)} allowClear style={{ borderRadius: 8 }} />
           </Col>
         </Row>
         <Table columns={columns} dataSource={filteredPatients} rowKey="id" loading={loading} pagination={{ pageSize: 10 }} bordered size="middle" />
@@ -272,7 +272,7 @@ const PatientList = () => {
                 <Text type="secondary" style={{ fontSize: 13 }}>NSS: {viewingPatient.nss || `PT-000${viewingPatient.id}`}</Text>
               </div>
             </Space>
-          ) : "Dossier Médical"
+          ) : "Medical Folder"
         }
         placement="right"
         width={750}
@@ -282,7 +282,7 @@ const PatientList = () => {
         headerStyle={{ borderBottom: '2px solid #1890ff' }}
       >
         {folderLoading ? (
-          <div style={{ textAlign: 'center', marginTop: 100 }}><Spin size="large" tip="Chargement du dossier médical..." /></div>
+          <div style={{ textAlign: 'center', marginTop: 100 }}><Spin size="large" tip="Loading medical folder..." /></div>
         ) : (
           <Tabs defaultActiveKey="1" items={drawerTabItems} size="large" />
         )}

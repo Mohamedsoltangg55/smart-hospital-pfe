@@ -159,6 +159,29 @@ def ensure_audit_log_severity_columns():
 
 ensure_audit_log_severity_columns()
 
+
+def ensure_audit_log_phase2_columns():
+    """Phase 2 (decision C): additive, nullable columns for the section 6.1
+    audit-log schema. Existing rows keep working unchanged."""
+    inspector = inspect(engine)
+    log_columns = {column["name"] for column in inspector.get_columns("audit_logs")}
+    new_columns = [
+        "operator_role", "target_type", "target_ref",
+        "source_ip", "detector", "features_used", "anomaly_severity",
+    ]
+    missing = [c for c in new_columns if c not in log_columns]
+    if not missing:
+        return
+    with engine.begin() as connection:
+        for col in missing:
+            if engine.dialect.name == "sqlite":
+                connection.execute(text(f"ALTER TABLE audit_logs ADD COLUMN {col} VARCHAR"))
+            else:
+                connection.execute(text(f"ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS {col} VARCHAR"))
+
+
+ensure_audit_log_phase2_columns()
+
 app = FastAPI(title="Smart Hospital API")
 
 # ✅ CORS restricted to allowed origins only
@@ -179,6 +202,18 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     return response
+
+# ✅ Capture the request source IP for the audit logger (Phase 2 / decision C)
+@app.middleware("http")
+async def capture_source_ip(request: Request, call_next):
+    from .security.request_context import set_source_ip
+    client = request.client
+    set_source_ip(client.host if client else None)
+    return await call_next(request)
+
+# 🛡️ Security Audit Logs API (Phase 2) — mounted as an APIRouter (decision D)
+from .security.routes import router as security_router
+app.include_router(security_router)
 
 # ✅ HEALTH CHECK ENDPOINT for Docker
 @app.get("/health")
@@ -345,23 +380,88 @@ def require_role(*allowed_roles):
 def log_action(db: Session, user: str, action: str, details: str):
     now = datetime.utcnow()
 
-    # 🧠 AI SECURITY HOOK: classify every audit entry before persisting.
-    # Failures inside the hook are isolated - they never break logging.
-    severity = "NORMAL"
-    score_str = None
+    # 🧠 ALGORITHMIC SECURITY LAYER (non-LLM): score the event with the
+    # autoencoder, then classify it into a NORMAL / SUSPICIOUS / CRITICAL
+    # status via the detection layer. Failures here never break audit logging.
+    raw_score = None
+    detector_status = None
     try:
         from ai_security_module.predict import check_live_log
         verdict = check_live_log(
             {"user": user, "action": action, "details": details, "timestamp": now},
             db=db,
         )
-        severity = verdict.get("severity", "NORMAL")
-        if verdict.get("score") is not None:
-            score_str = f"{verdict['score']:.6f}"
+        raw_score = verdict.get("score")
+        detector_status = verdict.get("severity")
     except Exception as e:
-        # Strict fail-safe: never let the AI layer break audit logging.
-        severity = "SUSPICIOUS_UNKNOWN_PATTERN"
+        detector_status = "SUSPICIOUS_UNKNOWN_PATTERN"
         print(f"AI security hook error: {e}")
+
+    status = "NORMAL"
+    score_str = None
+    severity_5 = "INFO"
+    features_json = None
+    detector_name = None
+    try:
+        import json as _json
+        from datetime import timedelta
+        from .security.detection import config as det_config
+        from .security.detection.classifier import classify
+        from .security.detection.rule_engine import RuleContext
+
+        # Recent events by the same operator -> feeds the burst rule.
+        recent_events = []
+        try:
+            lookback = now - timedelta(minutes=60)
+            recent_rows = (
+                db.query(models.AuditLog)
+                .filter(models.AuditLog.user == user)
+                .filter(models.AuditLog.timestamp >= lookback)
+                .order_by(models.AuditLog.timestamp.desc())
+                .limit(100)
+                .all()
+            )
+            recent_events = [
+                {"action": r.action, "timestamp": r.timestamp} for r in recent_rows
+            ]
+        except Exception:
+            recent_events = []
+
+        ctx = RuleContext(
+            action=action, details=details, timestamp=now,
+            user=user, recent_events=recent_events,
+        )
+        result = classify(raw_score=raw_score, detector_status=detector_status, context=ctx)
+        status = result.status
+        severity_5 = result.severity
+        features_json = _json.dumps(result.features_used)
+        detector_name = det_config.DETECTOR_NAME
+        if result.raw_score is not None:
+            score_str = f"{result.raw_score:.6f}"
+    except Exception as e:
+        # The detection layer must never break audit logging.
+        status = "SUSPICIOUS" if (detector_status and "UNKNOWN" in detector_status) else "NORMAL"
+        if raw_score is not None:
+            score_str = f"{raw_score:.6f}"
+        print(f"Detection classifier error: {e}")
+
+    # --- Phase 2 (section 6.1) metadata: operator role, source IP, target ---
+    operator_role = None
+    source_ip = None
+    target_type = None
+    target_ref = None
+    try:
+        import re as _re
+        from .security.detection.roles import role_of
+        from .security.request_context import get_source_ip
+        operator_role = role_of(user or "")
+        source_ip = get_source_ip()
+        match = _re.search(r"patient\s*#?\s*(\d+)", details or "", _re.IGNORECASE)
+        if match:
+            target_type = "PATIENT_FOLDER"
+            target_ref = f"patient_{match.group(1)}"
+    except Exception as e:
+        print(f"Audit metadata error: {e}")
 
     try:
         new_log = models.AuditLog(
@@ -369,8 +469,15 @@ def log_action(db: Session, user: str, action: str, details: str):
             action=action,
             details=details,
             timestamp=now,
-            severity=severity,
+            severity=status,
             anomaly_score=score_str,
+            operator_role=operator_role,
+            target_type=target_type,
+            target_ref=target_ref,
+            source_ip=source_ip,
+            detector=detector_name,
+            features_used=features_json,
+            anomaly_severity=severity_5,
         )
         db.add(new_log)
         db.commit()

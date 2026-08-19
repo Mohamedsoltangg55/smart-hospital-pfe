@@ -207,6 +207,18 @@ def train(raw_path: str = RAW_DATA_PATH, seed: int = DEFAULT_SEED) -> dict:
         "val_error_min": float(np.min(val_errors)),
         "val_error_max": float(np.max(val_errors)),
         "val_error_mean": float(np.mean(val_errors)),
+        # Phase 1: percentile anchors of normal-traffic reconstruction error.
+        # The detection layer uses these to normalize a raw score to 0-1 and
+        # to derive the NORMAL / SUSPICIOUS / CRITICAL tiers.
+        "score_anchors": {
+            "min": float(np.min(val_errors)),
+            "p50": float(np.percentile(val_errors, 50)),
+            "p90": float(np.percentile(val_errors, 90)),
+            "p95": float(np.percentile(val_errors, 95)),
+            "p98": float(np.percentile(val_errors, 98)),
+            "p99": float(np.percentile(val_errors, 99)),
+            "max": float(np.max(val_errors)),
+        },
         "anomaly_eval": anomaly_metrics,
         "trained_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }

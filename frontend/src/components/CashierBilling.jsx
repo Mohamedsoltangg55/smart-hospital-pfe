@@ -73,7 +73,7 @@ const Cashier = () => {
             type: 'Consultation',
             patient_name: `${appt.first_name} ${appt.last_name}`,
             patient_nss: appt.nss || '—',
-            description: `Visite — ${appt.service || 'Standard'}`,
+            description: `Visit — ${appt.service || 'Standard'}`,
             doctor_name: appt.doctor_full_name || appt.doctor_username,
             amount: amount,
             date: appt.scheduled_time,
@@ -107,8 +107,8 @@ const Cashier = () => {
             type: 'Laboratoire',
             patient_name: order.patient_name,
             patient_nss: order.patient_nss,
-            description: `Analyses: ${order.test_name}`,
-            doctor_name: order.doctor_name || 'Accueil',
+            description: `Tests: ${order.test_name}`,
+            doctor_name: order.doctor_name || 'Front Desk',
             amount: total,
             date: order.ordered_at,
             ticket_number: `LAB-${order.id}`
@@ -137,7 +137,7 @@ const Cashier = () => {
       setPendingBills(combinedBills);
     } catch (e) {
       console.error(e);
-      message.error("Erreur de chargement des factures.");
+      message.error("Error loading bills.");
     } finally {
       setLoading(false);
     }
@@ -150,7 +150,7 @@ const Cashier = () => {
   const printReceipt = (bill) => {
     const win = window.open('', '_blank');
     win.document.write(`
-      <html><head><title>Reçu de Paiement</title>
+      <html><head><title>Payment Receipt</title>
       <style>
         body { font-family: 'Courier New', Courier, monospace; padding: 20px; color: #000; width: 300px; margin: 0 auto; }
         .text-center { text-align: center; }
@@ -160,8 +160,8 @@ const Cashier = () => {
       </style></head>
       <body>
         <div class="text-center">
-          <h2 style="margin: 0;">CLINIQUE SMART</h2>
-          <p style="margin: 5px 0; font-size: 12px;">Reçu de Caisse</p>
+          <h2 style="margin: 0;">SMART CLINIC</h2>
+          <p style="margin: 5px 0; font-size: 12px;">Cashier Receipt</p>
         </div>
         <div class="divider"></div>
         <div class="flex-between" style="font-size: 12px;">
@@ -176,7 +176,7 @@ const Cashier = () => {
         <p class="bold" style="font-size: 14px; margin: 5px 0;">Patient:</p>
         <p style="margin: 0 0 10px 0; font-size: 14px;">${bill.patient_name}<br/><span style="font-size: 12px;">NSS: ${bill.patient_nss}</span></p>
         
-        <p class="bold" style="font-size: 14px; margin: 5px 0;">Désignation:</p>
+        <p class="bold" style="font-size: 14px; margin: 5px 0;">Description:</p>
         <p style="margin: 0 0 10px 0; font-size: 12px;">${bill.description}</p>
         
         <div class="divider"></div>
@@ -186,8 +186,8 @@ const Cashier = () => {
         </div>
         <div class="divider"></div>
         <div class="text-center" style="font-size: 11px; margin-top: 15px;">
-          <p>Merci de votre confiance.</p>
-          <p>Conservez ce reçu.</p>
+          <p>Thank you for your trust.</p>
+          <p>Keep this receipt.</p>
         </div>
         <script>window.print(); window.close();</script>
       </body></html>
@@ -197,15 +197,15 @@ const Cashier = () => {
 
   const handleProcessPayment = async (bill) => {
     Modal.confirm({
-      title: '💵 Confirmer l\'encaissement',
+      title: '💵 Confirm payment',
       content: (
         <div>
-          <p>Valider le paiement de <b>{bill.amount} DA</b> pour <b>{bill.patient_name}</b> ?</p>
-          <p style={{ fontSize: 12, color: 'gray' }}>Une trace sera automatiquement ajoutée au journal d'audit.</p>
+          <p>Confirm the payment of <b>{bill.amount} DA</b> for <b>{bill.patient_name}</b>?</p>
+          <p style={{ fontSize: 12, color: 'gray' }}>A record will be automatically added to the audit log.</p>
         </div>
       ),
-      okText: 'Encaisser',
-      cancelText: 'Annuler',
+      okText: 'Collect Payment',
+      cancelText: 'Cancel',
       okButtonProps: { style: { background: '#52c41a', borderColor: '#52c41a' } },
       onOk: async () => {
         try {
@@ -213,28 +213,28 @@ const Cashier = () => {
             await client.patch(`/appointments/${bill.id}/status`, { payment_status: 'Paid' });
           } else {
             setLocallyPaidLabs(prev => [...prev, bill.id]);
-            await client.post('/audit-logs', { 
-               user: 'Caisse', 
-               action: 'LAB_PAYMENT_RECEIVED', 
-               details: `Amount: ${bill.amount} DA - Lab ID: ${bill.id}` 
+            await client.post('/audit-logs', {
+               user: 'Cashier',
+               action: 'LAB_PAYMENT_RECEIVED',
+               details: `Amount: ${bill.amount} DA - Lab ID: ${bill.id}`
             });
           }
 
           setTotalRevenue(prev => prev + bill.amount);
-          message.success(`Paiement de ${bill.amount} DA reçu avec succès !`);
-          
+          message.success(`Payment of ${bill.amount} DA received successfully!`);
+
           Modal.confirm({
-            title: '🖨️ Imprimer le reçu ?',
+            title: '🖨️ Print the receipt?',
             icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
-            content: 'Voulez-vous imprimer le reçu pour le patient ?',
-            okText: 'Oui, Imprimer',
-            cancelText: 'Non',
+            content: 'Do you want to print the receipt for the patient?',
+            okText: 'Yes, Print',
+            cancelText: 'No',
             onOk: () => printReceipt(bill)
           });
 
           fetchBills();
         } catch (error) {
-          message.error("Échec de la transaction.");
+          message.error("Transaction failed.");
         }
       }
     });
@@ -242,14 +242,14 @@ const Cashier = () => {
 
   const handleCancelBill = async (bill) => {
     Modal.confirm({
-      title: '🛑 Annuler la facture',
+      title: '🛑 Cancel the bill',
       content: (
         <div>
-          <p>Êtes-vous sûr de vouloir annuler la facture de <b>{bill.patient_name}</b> pour <b>{bill.amount} DA</b> ?</p>
+          <p>Are you sure you want to cancel <b>{bill.patient_name}</b>'s bill for <b>{bill.amount} DA</b>?</p>
         </div>
       ),
-      okText: 'Oui, Annuler',
-      cancelText: 'Retour',
+      okText: 'Yes, Cancel',
+      cancelText: 'Back',
       okType: 'danger',
       onOk: async () => {
         try {
@@ -259,10 +259,10 @@ const Cashier = () => {
             // Option to cancel test or hide it from the list locally if backend does not support Cancelling lab orders yet.
             setLocallyPaidLabs(prev => [...prev, bill.id]); 
           }
-          message.success("Facture annulée avec succès.");
+          message.success("Bill cancelled successfully.");
           fetchBills();
         } catch (error) {
-          message.error("Échec de l'annulation de la facture.");
+          message.error("Failed to cancel the bill.");
         }
       }
     });
@@ -272,11 +272,11 @@ const Cashier = () => {
     const newBill = {
       key: `custom-${Date.now()}`,
       id: `custom-${Date.now()}`,
-      type: 'Facture Libre',
+      type: 'Custom Bill',
       patient_name: values.patient_name,
       patient_nss: values.nss || '—',
       description: values.description,
-      doctor_name: 'Caisse',
+      doctor_name: 'Cashier',
       amount: values.amount,
       date: new Date().toISOString(),
       ticket_number: `CUS-${Date.now().toString().slice(-6)}`
@@ -284,14 +284,14 @@ const Cashier = () => {
 
     // Immediatley pay it or just add to pending? Adding to pending might be confusing because there's no backend for custom bills after a reload. 
     // It's better to immediately print and add to session revenue.
-    await client.post('/audit-logs', { 
-       user: 'Caisse', 
-       action: 'CUSTOM_PAYMENT_RECEIVED', 
-       details: `Amount: ${newBill.amount} DA - Custom Bill for ${newBill.patient_name} - Motif: ${newBill.description}` 
+    await client.post('/audit-logs', {
+       user: 'Cashier',
+       action: 'CUSTOM_PAYMENT_RECEIVED',
+       details: `Amount: ${newBill.amount} DA - Custom Bill for ${newBill.patient_name} - Reason: ${newBill.description}`
     });
 
     setTotalRevenue(prev => prev + newBill.amount);
-    message.success(`Facture libre de ${newBill.amount} DA créée et validée avec succès !`);
+    message.success(`Custom bill of ${newBill.amount} DA created and validated successfully!`);
     
     // Auto print
     printReceipt(newBill);
@@ -318,27 +318,27 @@ const Cashier = () => {
         </div>
       )
     },
-    { 
-      title: 'Détails Facturation', 
-      dataIndex: 'description', 
+    {
+      title: 'Billing Details',
+      dataIndex: 'description',
       key: 'desc',
       render: (desc, r) => (
         <div>
           <Text>{desc}</Text><br/>
-          <Text type="secondary" style={{ fontSize: 11 }}>Par: Dr. {r.doctor_name}</Text>
+          <Text type="secondary" style={{ fontSize: 11 }}>By: Dr. {r.doctor_name}</Text>
         </div>
       )
     },
-    { 
-      title: 'Heure', 
-      dataIndex: 'date', 
+    {
+      title: 'Time',
+      dataIndex: 'date',
       key: 'date', 
       render: (d) => <Text strong>{dayjs(d).format('HH:mm')}</Text>,
       width: 100
     },
-    { 
-      title: 'Montant', 
-      dataIndex: 'amount', 
+    {
+      title: 'Amount',
+      dataIndex: 'amount',
       key: 'amount', 
       render: (a) => <Text strong style={{ color: '#52c41a', fontSize: 16 }}>{a} DA</Text>,
       width: 120
@@ -355,18 +355,18 @@ const Cashier = () => {
             onClick={() => handleProcessPayment(r)} 
             style={{ background: '#52c41a', borderColor: '#52c41a', fontWeight: 600, borderRadius: 6 }}
           >
-            Encaisser
+            Collect
           </Button>
-          <Tooltip title="Annuler le paiement">
-            <Button 
-              danger 
-              onClick={() => handleCancelBill(r)} 
+          <Tooltip title="Cancel the payment">
+            <Button
+              danger
+              onClick={() => handleCancelBill(r)}
               style={{ borderRadius: 6 }}
             >
-              Annuler
+              Cancel
             </Button>
           </Tooltip>
-          <Tooltip title="Aperçu Reçu">
+          <Tooltip title="Receipt Preview">
             <Button icon={<PrinterOutlined />} onClick={() => printReceipt(r)} style={{ borderRadius: 6 }} />
           </Tooltip>
         </Space>
@@ -381,23 +381,23 @@ const Cashier = () => {
       <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <Title level={2} style={{ margin: 0, color: '#141414' }}>
-            <DollarOutlined style={{ color: '#52c41a', marginRight: 12 }} /> 
-            Caisse & Facturation
+            <DollarOutlined style={{ color: '#52c41a', marginRight: 12 }} />
+            Cashier & Billing
           </Title>
-          <Text type="secondary" style={{ fontSize: 15 }}>Gérez les encaissements des consultations et des actes de laboratoire.</Text>
+          <Text type="secondary" style={{ fontSize: 15 }}>Manage payments for consultations and laboratory services.</Text>
         </div>
         <Space>
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />} 
-            onClick={() => setIsCustomFactureModalOpen(true)} 
-            size="large" 
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setIsCustomFactureModalOpen(true)}
+            size="large"
             style={{ borderRadius: 8, background: '#1890ff', borderColor: '#1890ff' }}
           >
-            Facture Libre
+            Custom Bill
           </Button>
           <Button icon={<SyncOutlined />} onClick={fetchBills} loading={loading} size="large" style={{ borderRadius: 8 }}>
-            Actualiser
+            Refresh
           </Button>
         </Space>
       </div>
@@ -406,7 +406,7 @@ const Cashier = () => {
         <Col span={8}>
           <Card style={{ borderRadius: 12, background: '#f6ffed', borderLeft: '5px solid #52c41a', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
             <Statistic 
-              title={<Text style={{ color: '#237804', fontWeight: 600 }}>Recettes du Jour (Session)</Text>} 
+              title={<Text style={{ color: '#237804', fontWeight: 600 }}>Today's Revenue (Session)</Text>}
               value={totalRevenue} 
               suffix="DA" 
               prefix={<DollarOutlined />}
@@ -417,7 +417,7 @@ const Cashier = () => {
         <Col span={8}>
           <Card style={{ borderRadius: 12, background: '#fff7e6', borderLeft: '5px solid #fa8c16', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
             <Statistic 
-              title={<Text style={{ color: '#874d00', fontWeight: 600 }}>Factures en Attente</Text>} 
+              title={<Text style={{ color: '#874d00', fontWeight: 600 }}>Pending Bills</Text>}
               value={pendingBills.length} 
               prefix={<ShoppingCartOutlined style={{ color: '#fa8c16' }} />} 
               valueStyle={{ color: '#fa8c16', fontWeight: 800, fontSize: 32 }} 
@@ -426,38 +426,38 @@ const Cashier = () => {
         </Col>
       </Row>
 
-      <Card title={<span style={{ fontWeight: 700 }}>Transactions en attente de règlement</span>} style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }} bodyStyle={{ padding: 0 }}>
-        <Table 
-          columns={columns} 
-          dataSource={pendingBills} 
-          loading={loading} 
-          bordered 
-          size="middle" 
+      <Card title={<span style={{ fontWeight: 700 }}>Transactions awaiting payment</span>} style={{ borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }} bodyStyle={{ padding: 0 }}>
+        <Table
+          columns={columns}
+          dataSource={pendingBills}
+          loading={loading}
+          bordered
+          size="middle"
           pagination={{ pageSize: 10 }}
-          locale={{ emptyText: <Empty description="Aucun paiement en attente. Tout est à jour !" /> }} 
+          locale={{ emptyText: <Empty description="No pending payments. Everything is up to date!" /> }}
         />
       </Card>
 
       {/* Modal Facture Libre */}
       <Modal 
-        title={<Space><DollarOutlined style={{ color: '#52c41a' }}/> Créer une Facture Libre</Space>}
+        title={<Space><DollarOutlined style={{ color: '#52c41a' }}/> Create a Custom Bill</Space>}
         open={isCustomFactureModalOpen}
         onCancel={() => { setIsCustomFactureModalOpen(false); customForm.resetFields(); }}
         onOk={() => customForm.submit()}
-        okText="Valider & Imprimer"
-        cancelText="Annuler"
+        okText="Validate & Print"
+        cancelText="Cancel"
       >
         <Form form={customForm} layout="vertical" onFinish={handleCreateCustomFacture}>
-          <Form.Item name="patient_name" label="Nom du Patient" rules={[{ required: true, message: 'Veuillez saisir le nom du patient' }]}>
-            <Input placeholder="Ex: Ali Benali" size="large" />
+          <Form.Item name="patient_name" label="Patient Name" rules={[{ required: true, message: "Please enter the patient's name" }]}>
+            <Input placeholder="e.g. Ali Benali" size="large" />
           </Form.Item>
-          <Form.Item name="nss" label="NSS (Optionnel)">
-            <Input placeholder="N° de Sécurité Sociale" size="large" />
+          <Form.Item name="nss" label="NSS (Optional)">
+            <Input placeholder="Social Security Number" size="large" />
           </Form.Item>
-          <Form.Item name="description" label="Désignation / Motif" rules={[{ required: true, message: 'Veuillez saisir la description de la facture' }]}>
-            <Input.TextArea placeholder="Ex: Vente de médicaments, Services divers..." rows={2} size="large" />
+          <Form.Item name="description" label="Description / Reason" rules={[{ required: true, message: 'Please enter the bill description' }]}>
+            <Input.TextArea placeholder="e.g. Medication sale, Miscellaneous services..." rows={2} size="large" />
           </Form.Item>
-          <Form.Item name="amount" label="Montant (DA)" rules={[{ required: true, message: 'Veuillez saisir le montant' }]}>
+          <Form.Item name="amount" label="Amount (DA)" rules={[{ required: true, message: 'Please enter the amount' }]}>
             <InputNumber placeholder="0" min={1} style={{ width: '100%' }} size="large" addonAfter="DA" />
           </Form.Item>
         </Form>

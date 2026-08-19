@@ -17,26 +17,26 @@ const MainLayout = ({ children, onLogout, role }) => {
 
   const adminMenuItems = [
     { key: 'dashboard', icon: <HourglassOutlined />, label: 'Dashboard Overview' },
-    { key: 'triage', icon: <TeamOutlined />, label: 'Réception & Triage' }, 
+    { key: 'triage', icon: <TeamOutlined />, label: 'Reception & Triage' },
     { key: 'PatientRegistration', icon: <UserAddOutlined />, label: 'Register Patient' },
     { key: 'patients', icon: <SolutionOutlined/>, label: 'Patient Directory' },
     { key: 'hospitalisation_beds', icon: <MedicineBoxOutlined />, label: 'Hospitalisation Beds' },
-    { key: 'laboratory', icon: <ExperimentOutlined />, label: 'Espace Laboratoire' },
+    { key: 'laboratory', icon: <ExperimentOutlined />, label: 'Laboratory' },
     { key: 'inventory', icon: <MedicineBoxOutlined/>, label: 'Pharmacy Inventory' },
-    { key: 'cashier', icon: <DollarOutlined />, label: 'Caisse & Facturation' },
+    { key: 'cashier', icon: <DollarOutlined />, label: 'Cashier & Billing' },
     { key: 'users', icon: <UserOutlined />, label: 'System Admin (Users)' },
     { key: 'audit_logs', icon: <SafetyCertificateOutlined />, label: 'Security Audit Logs' },
     { key: 'admin_settings', icon: <SettingOutlined />, label: 'Admin Settings' },
-    
-    
+
+
   ];
 
   const receptionMenuItems = [
-    { key: 'triage', icon: <TeamOutlined />, label: 'Réception & Triage' }, 
+    { key: 'triage', icon: <TeamOutlined />, label: 'Reception & Triage' },
     { key: 'PatientRegistration', icon: <UserAddOutlined />, label: 'Register Patient' },
-    { key: 'patients', icon: <SolutionOutlined />, label: 'Annuaire Patients' },
+    { key: 'patients', icon: <SolutionOutlined />, label: 'Patient Directory' },
     { key: 'hospitalisation_beds', icon: <MedicineBoxOutlined />, label: 'Hospitalisation Beds' },
-    { key: 'cashier', icon: <DollarOutlined />, label: 'Caisse & Facturation' },
+    { key: 'cashier', icon: <DollarOutlined />, label: 'Cashier & Billing' },
   ];
 
   const doctorMenuItems = [
@@ -45,13 +45,13 @@ const MainLayout = ({ children, onLogout, role }) => {
   ];
 
   const nurseMenuItems = [
-    { key: 'nurse_workspace', icon: <MedicineBoxOutlined />, label: 'Soins Infirmiers' },
+    { key: 'nurse_workspace', icon: <MedicineBoxOutlined />, label: 'Nursing Care' },
     { key: 'hospitalisation_beds', icon: <MedicineBoxOutlined />, label: 'Bed Map' },
-    { key: 'patients', icon: <SolutionOutlined />, label: 'Annuaire Patients' },
+    { key: 'patients', icon: <SolutionOutlined />, label: 'Patient Directory' },
   ];
 
   const labMenuItems = [
-  { key: 'laboratory', icon: <ExperimentOutlined />, label: 'Espace Laboratoire' },
+  { key: 'laboratory', icon: <ExperimentOutlined />, label: 'Laboratory' },
 ];
 
   const getMenuItems = () => {
